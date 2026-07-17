@@ -8,11 +8,11 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.yield
 import tech.thothlab.dombra.core.Clock
 import tech.thothlab.dombra.core.IdGenerator
 import tech.thothlab.dombra.data.repo.testTrack
@@ -58,13 +58,12 @@ private class SeqIds : IdGenerator {
 
 
 /**
- * coroutines-test 1.11: корутины backgroundScope стартуют только после первой
- * суспензии тела теста — одного advanceUntilIdle недостаточно.
+ * coroutines-test 1.11: advanceUntilIdle() не выполняет задачи, запланированные
+ * на текущее виртуальное время (no-op для каскадов StateFlow → collector → launch).
+ * runCurrent() прогоняет весь каскад целиком, включая старт корутин backgroundScope.
  */
-private suspend fun TestScope.settle() {
-    yield()
-    advanceUntilIdle()
-}
+@OptIn(ExperimentalCoroutinesApi::class)
+private fun TestScope.settle() = runCurrent()
 
 class PlaybackControllerTest {
 
