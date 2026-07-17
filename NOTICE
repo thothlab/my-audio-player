@@ -1,0 +1,16 @@
+Dombra — cross-platform local music player (Kotlin Multiplatform / Compose Multiplatform).
+
+Copyright (C) 2026 thothlab
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version. See LICENSE for the full text.
+
+Behavioral reference
+--------------------
+Dombra is an independent implementation. Its feature set and user-facing
+behavior are modeled after Cosmos Music Player for iOS
+(https://github.com/clquwu/Cosmos-Music-Player, GPL-3.0). No source code
+from Cosmos Music Player has been copied or translated into this project;
+it served as a behavioral reference only.

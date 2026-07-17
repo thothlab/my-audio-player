@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "codex/**"]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Whitespace check
+        run: git diff --check origin/main...HEAD || git diff --check HEAD~1 HEAD || true
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build and test (JVM, Android, Web JS, Web Wasm, iOS compile-check skipped on linux)
+        run: >
+          ./gradlew --no-daemon --continue
+          :sharedUI:jvmTest
+          :androidApp:assembleDebug
+          :webApp:jsBrowserDistribution
+          :webApp:wasmJsBrowserDistribution
+
+      - name: Secret scan in web bundles
+        run: |
+          ! grep -rEl "(client_secret|SPOTIFY_CLIENT_SECRET|DISCOGS_TOKEN)" \
+            webApp/build/dist/ 2>/dev/null || (echo "Secret-like strings found in web bundle" && exit 1)
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            **/build/reports/tests/**

@@ -32,7 +32,21 @@ kotlin {
     iosArm64()
     iosSimulatorArm64()
 
+    applyDefaultHierarchyTemplate()
+
     sourceSets {
+        // Room (android/jvm/ios) не поддерживает js/wasm: общий Room-код живёт в nonWebMain,
+        // web-таргеты получают собственную реализацию хранилища в webMain.
+        val nonWebMain by creating {
+            dependsOn(commonMain.get())
+            dependencies {
+                implementation(libs.room.runtime)
+            }
+        }
+        androidMain.get().dependsOn(nonWebMain)
+        jvmMain.get().dependsOn(nonWebMain)
+        iosMain.get().dependsOn(nonWebMain)
+
         commonMain.dependencies {
             api(libs.compose.runtime)
             api(libs.compose.ui)
@@ -56,7 +70,6 @@ kotlin {
             implementation(libs.coil.network.ktor)
             implementation(libs.multiplatformSettings)
             implementation(libs.kotlinx.datetime)
-            implementation(libs.room.runtime)
             implementation(libs.kstore)
         }
 
