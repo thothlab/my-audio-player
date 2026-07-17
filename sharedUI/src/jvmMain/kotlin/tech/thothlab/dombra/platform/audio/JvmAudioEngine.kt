@@ -72,7 +72,7 @@ class JvmAudioEngine(
             if (!file.isFile || !file.canRead()) {
                 throw DombraException(DombraError.SourceUnavailable(source.uri))
             }
-            source.replayGainDb?.let { gainDb = it }
+            gainDb = source.replayGainDb ?: 0.0
             val durationMs = validateAndMeasure(file)
             synchronized(lock) { prepared = Prepared(file, durationMs) }
             _position.tryEmit(0L)
@@ -309,6 +309,13 @@ class JvmAudioEngine(
 
         fun stopAndJoin() {
             stopRequested = true
+            // Разблокировать возможный висящий line.write: на паузе линия остановлена,
+            // буфер полон — write блокируется, а interrupt() его НЕ прерывает.
+            // flush() освобождает буфер, и поток доходит до выхода из цикла.
+            if (lineReady) {
+                runCatching { line.stop() }
+                runCatching { line.flush() }
+            }
             thread?.let {
                 it.interrupt()
                 runCatching { it.join(1000) }
