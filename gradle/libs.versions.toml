@@ -20,6 +20,9 @@ room = "2.8.4"
 sqlite = "2.6.1"
 ksp = "2.3.9"
 kstore = "1.0.0"
+soundlibs-mp3spi = "1.9.5.4"
+soundlibs-vorbisspi = "1.0.3.3"
+jflac = "1.5.2"
 
 [libraries]
 
@@ -60,6 +63,9 @@ kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
+soundlibs-mp3spi = { module = "com.googlecode.soundlibs:mp3spi", version.ref = "soundlibs-mp3spi" }
+soundlibs-vorbisspi = { module = "com.googlecode.soundlibs:vorbisspi", version.ref = "soundlibs-vorbisspi" }
+jflac-codec = { module = "org.jflac:jflac-codec", version.ref = "jflac" }
 kstore = { module = "io.github.xxfast:kstore", version.ref = "kstore" }
 kstore-file = { module = "io.github.xxfast:kstore-file", version.ref = "kstore" }
 kstore-storage = { module = "io.github.xxfast:kstore-storage", version.ref = "kstore" }

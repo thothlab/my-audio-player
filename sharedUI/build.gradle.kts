@@ -96,6 +96,10 @@ kotlin {
             implementation(libs.kotlinx.coroutines.swing)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.kstore.file)
+            // javax.sound SPI-декодеры: mp3/ogg-vorbis/flac подхватываются AudioSystem с classpath.
+            implementation(libs.soundlibs.mp3spi)
+            implementation(libs.soundlibs.vorbisspi)
+            implementation(libs.jflac.codec)
         }
 
         webMain.dependencies {
