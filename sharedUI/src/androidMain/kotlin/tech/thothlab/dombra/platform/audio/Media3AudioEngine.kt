@@ -7,6 +7,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.Tracks
 import androidx.media3.exoplayer.ExoPlayer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -43,7 +44,7 @@ class Media3AudioEngine(
     private val capability: AudioFormatCapability = Media3Capability(),
 ) : AudioEngine {
 
-    private val log = Log.withTag("Media3DBG")
+    private val log = Log.withTag("Media3")
     private val appContext = context.applicationContext
     private val mainHandler = Handler(Looper.getMainLooper())
     private val scope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
@@ -104,6 +105,27 @@ class Media3AudioEngine(
                     if (player?.playbackState == Player.STATE_READY) {
                         _state.value = EngineState.Paused(durationMs)
                     }
+                }
+            }
+
+            override fun onTracksChanged(tracks: Tracks) {
+                // Есть аудио-дорожка, но ни одна не декодируется (нет кодека под формат) →
+                // не притворяемся, что играем: честная ошибка, трек пропускается.
+                val audio = tracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO }
+                if (audio.isEmpty()) return
+                val playable = audio.any { g -> (0 until g.length).any { g.isTrackSupported(it) } }
+                if (!playable) {
+                    val mime = audio.first().getTrackFormat(0).sampleMimeType
+                    val friendly = when (mime) {
+                        "audio/alac" -> "ALAC (Apple Lossless)"
+                        "audio/flac" -> "FLAC"
+                        else -> mime ?: "аудио"
+                    }
+                    log.w { "нет декодера для дорожки: $mime" }
+                    stopPositionUpdates()
+                    _state.value = EngineState.Failed(
+                        DombraError.FormatUnsupported(friendly, capability.backendName),
+                    )
                 }
             }
 

@@ -1,6 +1,7 @@
 package tech.thothlab.dombra.di
 
 import android.content.Context
+import androidx.room.Room
 import com.russhwolf.settings.SharedPreferencesSettings
 import kotlin.random.Random
 import kotlinx.coroutines.CoroutineDispatcher
@@ -14,7 +15,9 @@ import tech.thothlab.dombra.core.SystemClock
 import tech.thothlab.dombra.data.indexer.DefaultLibraryIndexer
 import tech.thothlab.dombra.data.repo.DefaultLibraryRepository
 import tech.thothlab.dombra.data.settings.DefaultSettingsRepository
-import tech.thothlab.dombra.data.store.InMemoryLibraryStore
+import tech.thothlab.dombra.data.store.room.DombraDatabase
+import tech.thothlab.dombra.data.store.room.RoomLibraryStore
+import tech.thothlab.dombra.data.store.room.buildDombraDatabase
 import tech.thothlab.dombra.domain.ports.LibraryIndexer
 import tech.thothlab.dombra.domain.ports.LibraryRepository
 import tech.thothlab.dombra.domain.ports.SourceRef
@@ -25,16 +28,19 @@ import tech.thothlab.dombra.platform.audio.Media3Capability
 import tech.thothlab.dombra.presentation.player.PlaybackController
 
 /**
- * Android-граф (§7.3 ТЗ). media3-движок + SAF-хранилище + индексатор + библиотека.
- * Хранилище пока in-memory (Room — следующий шаг); доступ к папке переживает
- * рестарт (persistable permission), библиотеку нужно переиндексировать.
+ * Android-граф (§7.3 ТЗ). media3-движок + SAF-хранилище + Room-store + индексатор.
+ * Библиотека и доступ к папке (persistable permission) переживают рестарт.
  */
 fun createAndroidAppGraph(context: Context): AppGraph {
     val app = context.applicationContext
     val dispatchers = AndroidDispatchers
     val scope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
 
-    val store = InMemoryLibraryStore()
+    val db = Room.databaseBuilder<DombraDatabase>(
+        context = app,
+        name = app.getDatabasePath(DombraDatabase.FILE_NAME).absolutePath,
+    ).buildDombraDatabase()
+    val store = RoomLibraryStore(db)
     val storage = ContentUriStorageProvider(app, dispatchers.io)
     val artwork = JavaFileArtworkRepository(app.cacheDir, dispatchers)
     val clock = SystemClock()

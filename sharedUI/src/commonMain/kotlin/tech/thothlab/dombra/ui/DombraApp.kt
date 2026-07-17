@@ -68,6 +68,14 @@ fun DombraApp(
         }
         Text(status, style = MaterialTheme.typography.bodyMedium)
 
+        player.error?.let { err ->
+            Text(
+                text = "⚠ ${err.message}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+
         player.currentTrack?.let { current ->
             HorizontalDivider()
             Row(
