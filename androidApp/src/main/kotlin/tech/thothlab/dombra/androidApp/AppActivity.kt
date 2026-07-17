@@ -9,14 +9,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowInsetsControllerCompat
-import tech.thothlab.dombra.App
+import tech.thothlab.dombra.di.createAndroidAppGraph
+import tech.thothlab.dombra.ui.DombraApp
 
 class AppActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent { 
-            App(onThemeChanged = { ThemeChanged(it) }) 
+        val graph = createAndroidAppGraph(this)
+        setContent {
+            DombraApp(graph, onThemeChanged = { ThemeChanged(it) })
         }
     }
 }

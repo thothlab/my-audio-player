@@ -89,6 +89,8 @@ kotlin {
             implementation(libs.kotlinx.coroutines.android)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.kstore.file)
+            implementation(libs.media3.exoplayer)
+            implementation(libs.media3.common)
         }
 
         jvmMain.dependencies {
