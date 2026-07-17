@@ -8,7 +8,9 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.NextRenderersFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -72,7 +74,11 @@ class Media3AudioEngine(
     /** Создаётся лениво на main-потоке. */
     private fun ensurePlayer(): ExoPlayer {
         player?.let { return it }
-        val p = ExoPlayer.Builder(appContext).build()
+        // NextRenderersFactory добавляет prebuilt FFmpeg-декодеры (ALAC/FLAC/DTS/…).
+        // MODE_ON: аппаратные кодеки первыми, FFmpeg — фолбэк для того, что платформа не тянет.
+        val renderers = NextRenderersFactory(appContext)
+            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
+        val p = ExoPlayer.Builder(appContext, renderers).build()
         p.volume = volume
         p.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {

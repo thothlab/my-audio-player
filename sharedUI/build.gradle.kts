@@ -91,6 +91,8 @@ kotlin {
             implementation(libs.kstore.file)
             implementation(libs.media3.exoplayer)
             implementation(libs.media3.common)
+            // Prebuilt FFmpeg-декодеры (ALAC/FLAC/Opus/DTS/…): NextRenderersFactory.
+            implementation(libs.nextlib.media3ext)
         }
 
         jvmMain.dependencies {
