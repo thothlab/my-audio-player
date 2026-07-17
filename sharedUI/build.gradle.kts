@@ -41,6 +41,7 @@ kotlin {
             dependsOn(commonMain.get())
             dependencies {
                 implementation(libs.room.runtime)
+                implementation(libs.sqlite.bundled)
             }
         }
         androidMain.get().dependsOn(nonWebMain)
