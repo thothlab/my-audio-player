@@ -36,7 +36,13 @@ class ContentUriStorageProvider(
                 null, null, null,
             )?.use { c ->
                 if (!c.moveToFirst()) return@use null
-                FileStat(size = c.getLong(0), modificationTime = c.getLong(1))
+                val sizeCol = c.getColumnIndex(DocumentsContract.Document.COLUMN_SIZE)
+                // Размер нужен для контентного stableId — без него файл не индексируем
+                // (лучше пропустить, чем испортить идентификатор нулевым размером).
+                if (sizeCol < 0 || c.isNull(sizeCol)) return@use null
+                val modCol = c.getColumnIndex(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
+                val modTime = if (modCol >= 0 && !c.isNull(modCol)) c.getLong(modCol) else 0L
+                FileStat(size = c.getLong(sizeCol), modificationTime = modTime)
             }
         }.getOrNull()
     }
