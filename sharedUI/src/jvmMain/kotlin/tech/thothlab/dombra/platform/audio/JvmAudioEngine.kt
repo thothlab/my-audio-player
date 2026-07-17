@@ -207,14 +207,23 @@ class JvmAudioEngine(
 
         fun start() {
             val first = PcmDecoding.openPcmStream(file)
-            val fmt = first.format
-            frameRate = fmt.sampleRate
-            frameSize = fmt.frameSize
-            line = AudioSystem.getSourceDataLine(fmt)
-            line.open(fmt)
-            lineReady = true
-            applyGain()
-            line.start()
+            try {
+                val fmt = first.format
+                frameRate = fmt.sampleRate
+                frameSize = fmt.frameSize
+                line = AudioSystem.getSourceDataLine(fmt)
+                line.open(fmt)
+                lineReady = true
+                applyGain()
+                line.start()
+            } catch (e: Exception) {
+                // Ветка «нет аудио-выхода» (LineUnavailableException): декодированный
+                // поток уже открыт — закрыть его, иначе утечка файлового хендла на каждый play().
+                runCatching { first.close() }
+                if (this::line.isInitialized) runCatching { line.close() }
+                lineReady = false
+                throw e
+            }
             _state.value = EngineState.Playing(durationMs)
             thread = Thread({ runLoop(first) }, "dombra-jvm-audio").apply {
                 isDaemon = true
