@@ -3,33 +3,41 @@ package tech.thothlab.dombra.di
 import android.content.Context
 import com.russhwolf.settings.SharedPreferencesSettings
 import kotlin.random.Random
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import tech.thothlab.dombra.core.DispatcherProvider
+import tech.thothlab.dombra.core.Log
 import tech.thothlab.dombra.core.RandomIdGenerator
 import tech.thothlab.dombra.core.SystemClock
+import tech.thothlab.dombra.data.indexer.DefaultLibraryIndexer
+import tech.thothlab.dombra.data.repo.DefaultLibraryRepository
 import tech.thothlab.dombra.data.settings.DefaultSettingsRepository
 import tech.thothlab.dombra.data.store.InMemoryLibraryStore
-import tech.thothlab.dombra.domain.model.Album
-import tech.thothlab.dombra.domain.model.Artist
-import tech.thothlab.dombra.domain.model.AudioFormat
-import tech.thothlab.dombra.domain.model.Track
-import tech.thothlab.dombra.domain.ports.FileStat
+import tech.thothlab.dombra.domain.ports.LibraryIndexer
+import tech.thothlab.dombra.domain.ports.LibraryRepository
 import tech.thothlab.dombra.domain.ports.SourceRef
-import tech.thothlab.dombra.domain.ports.StorageProvider
+import tech.thothlab.dombra.platform.ContentUriStorageProvider
+import tech.thothlab.dombra.platform.JavaFileArtworkRepository
 import tech.thothlab.dombra.platform.audio.Media3AudioEngine
 import tech.thothlab.dombra.platform.audio.Media3Capability
 import tech.thothlab.dombra.presentation.player.PlaybackController
 
 /**
- * Android-граф (§7.3 ТЗ). Сейчас — скелет вертикального среза: media3-движок +
- * демо-трек из ассетов, чтобы проверить тракт UI → PlaybackController → ExoPlayer
- * на устройстве. Room-store, SAF-storage (T04) и импорт подключатся дальше.
+ * Android-граф (§7.3 ТЗ). media3-движок + SAF-хранилище + индексатор + библиотека.
+ * Хранилище пока in-memory (Room — следующий шаг); доступ к папке переживает
+ * рестарт (persistable permission), библиотеку нужно переиндексировать.
  */
 fun createAndroidAppGraph(context: Context): AppGraph {
     val app = context.applicationContext
+    val dispatchers = AndroidDispatchers
     val scope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
+
     val store = InMemoryLibraryStore()
+    val storage = ContentUriStorageProvider(app, dispatchers.io)
+    val artwork = JavaFileArtworkRepository(app.cacheDir, dispatchers)
+    val clock = SystemClock()
     val settings = DefaultSettingsRepository(
         SharedPreferencesSettings(app.getSharedPreferences("dombra", Context.MODE_PRIVATE)),
     )
@@ -39,48 +47,35 @@ fun createAndroidAppGraph(context: Context): AppGraph {
         engine = engine,
         capability = Media3Capability(),
         store = store,
-        storage = AssetStorageProvider,
+        storage = storage,
         settings = settings,
         idGenerator = RandomIdGenerator(),
-        clock = SystemClock(),
+        clock = clock,
         scope = scope,
         random = Random.Default,
     )
+    val libraryIndexer = DefaultLibraryIndexer(storage, store, artwork, clock, dispatchers)
+    val libraryRepo = DefaultLibraryRepository(store)
 
     return object : AppGraph {
         override val playback = controller
-        override val demoTrack = DEMO_TRACK
+        override val library: LibraryRepository = libraryRepo
+        override val indexer: LibraryIndexer = libraryIndexer
+
+        override suspend fun importTree(treeUri: String, displayName: String) {
+            val log = Log.withTag("Import")
+            val dir = SourceRef(uri = treeUri, displayName = displayName, isDirectory = true)
+            storage.persistAccess(dir)
+            log.i { "import start: ${Log.redactUri(treeUri)}" }
+            libraryIndexer.scan(listOf(dir), fullScan = true).collect { event ->
+                log.i { "scan: $event" }
+            }
+        }
     }
 }
 
-/** Демо-трек из `androidApp/src/main/assets/fixture.mp3`. Временный, до импорта (T04). */
-private val DEMO_TRACK: Track = run {
-    val artistId = Artist.idFor("Dombra")
-    Track(
-        stableId = "demo-fixture",
-        albumId = Album.idFor(artistId, "Demo"),
-        artistId = artistId,
-        title = "Демо-фикстура",
-        artistName = "Dombra",
-        albumTitle = "Demo",
-        format = AudioFormat.MP3,
-        sourceUri = "asset:///fixture.mp3",
-        sourceDisplayName = "fixture.mp3",
-        fileSize = 0L,
-        modificationTime = 0L,
-        addedAt = 0L,
-    )
-}
-
-/**
- * Скелет-storage: демо-трек лежит в ассетах и всегда доступен. Настоящий
- * доступ к файлам (SAF/content URI) — T04, тогда этот стаб уходит.
- */
-private object AssetStorageProvider : StorageProvider {
-    override suspend fun stat(ref: SourceRef): FileStat? = FileStat(size = 0L, modificationTime = 0L)
-    override suspend fun listAudioFiles(dir: SourceRef): List<SourceRef> = emptyList()
-    override suspend fun readBytes(ref: SourceRef, offset: Long, length: Long): ByteArray = ByteArray(0)
-    override suspend fun persistAccess(ref: SourceRef) = Unit
-    override val canDeleteFiles: Boolean = false
-    override suspend fun deleteFile(ref: SourceRef): Boolean = false
+private object AndroidDispatchers : DispatcherProvider {
+    override val main: CoroutineDispatcher = Dispatchers.Main.immediate
+    override val default: CoroutineDispatcher = Dispatchers.Default
+    override val io: CoroutineDispatcher = Dispatchers.IO
 }

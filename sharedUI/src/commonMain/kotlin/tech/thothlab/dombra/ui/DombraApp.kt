@@ -1,16 +1,19 @@
 package tech.thothlab.dombra.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,69 +21,115 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import tech.thothlab.dombra.di.AppGraph
+import tech.thothlab.dombra.domain.model.Track
 import tech.thothlab.dombra.presentation.player.PlayerState
 import tech.thothlab.dombra.theme.AppTheme
 
 /**
- * Корневой UI Dombra. Пока — вертикальный срез-скелет: проигрывание демо-трека
- * через реальный `PlaybackController` + платформенный `AudioEngine` (проверка
- * тракта на устройстве). Экран библиотеки/плеера — T06/T08.
+ * Корневой UI Dombra: выбор папки с музыкой (SAF/каталог) → список треков →
+ * проигрывание. Экран-минимум поверх реальных `LibraryRepository`/`PlaybackController`;
+ * навигация, обложки и экран плеера — T06/T08.
  */
 @Composable
 fun DombraApp(
     graph: AppGraph,
+    onPickFolder: (() -> Unit)? = null,
     onThemeChanged: @Composable (isDark: Boolean) -> Unit = {},
 ) = AppTheme(onThemeChanged) {
-    val state: PlayerState by graph.playback.state.collectAsState()
+    val tracks: List<Track> by graph.library.tracks().collectAsState(initial = emptyList())
+    val scanning: Boolean by graph.indexer.isScanning.collectAsState(initial = false)
+    val player: PlayerState by graph.playback.state.collectAsState()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.safeDrawing)
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text("Dombra", style = MaterialTheme.typography.displaySmall)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Dombra", style = MaterialTheme.typography.headlineSmall)
+            if (onPickFolder != null) {
+                Button(onClick = onPickFolder, enabled = !scanning) { Text("Выбрать папку") }
+            }
+        }
 
-        Text(
-            text = state.currentTrack?.title ?: "нет трека",
-            style = MaterialTheme.typography.titleMedium,
-        )
-        Text("состояние: ${stateLabel(state)}", style = MaterialTheme.typography.bodyMedium)
-        Text(
-            "позиция: ${state.positionMs} мс" + (state.durationMs?.let { " / $it мс" } ?: ""),
-            style = MaterialTheme.typography.bodySmall,
-        )
-        state.error?.let { Text("ошибка: ${it.message}", style = MaterialTheme.typography.bodySmall) }
+        val status = when {
+            scanning -> "Индексация…"
+            tracks.isEmpty() -> "Выберите папку с музыкой"
+            else -> "Треков: ${tracks.size}"
+        }
+        Text(status, style = MaterialTheme.typography.bodyMedium)
 
-        Spacer(Modifier.height(12.dp))
+        player.currentTrack?.let { current ->
+            HorizontalDivider()
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable { graph.playback.togglePlayPause() },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = (if (player.isPlaying) "▶ " else "⏸ ") + current.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(vertical = 8.dp),
+                )
+                Text(formatMs(player.positionMs), style = MaterialTheme.typography.bodySmall)
+            }
+            HorizontalDivider()
+        }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(
-                enabled = graph.demoTrack != null,
-                onClick = { graph.demoTrack?.let { graph.playback.playNow(it) } },
-            ) { Text("Демо-трек") }
-
-            Button(
-                enabled = state.currentTrack != null,
-                onClick = { graph.playback.togglePlayPause() },
-            ) { Text(if (state.isPlaying) "Пауза" else "Играть") }
-
-            Button(
-                enabled = state.hasQueue,
-                onClick = { graph.playback.stop() },
-            ) { Text("Стоп") }
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            items(tracks, key = { it.stableId }) { track ->
+                TrackRow(
+                    track = track,
+                    isCurrent = track.stableId == player.currentTrack?.stableId,
+                    onClick = { graph.playback.playNow(track, tracks) },
+                )
+            }
         }
     }
 }
 
-private fun stateLabel(state: PlayerState): String = when {
-    state.error != null -> "ошибка"
-    state.isBuffering -> "буферизация"
-    state.isPlaying -> "играет"
-    state.currentTrack != null -> "пауза"
-    else -> "простой"
+@Composable
+private fun TrackRow(track: Track, isCurrent: Boolean, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+    ) {
+        Text(
+            text = track.title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = track.artistName,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+private fun formatMs(ms: Long): String {
+    val totalSec = ms / 1000
+    val m = totalSec / 60
+    val s = totalSec % 60
+    return "$m:${s.toString().padStart(2, '0')}"
 }
