@@ -47,6 +47,11 @@ kotlin {
         jvmMain.get().dependsOn(nonWebMain)
         iosMain.get().dependsOn(nonWebMain)
 
+        // Общий java.io-код для android+jvm (файловый storage, artwork-кэш)
+        val jvmSharedMain by creating { dependsOn(nonWebMain) }
+        androidMain.get().dependsOn(jvmSharedMain)
+        jvmMain.get().dependsOn(jvmSharedMain)
+
         commonMain.dependencies {
             api(libs.compose.runtime)
             api(libs.compose.ui)
