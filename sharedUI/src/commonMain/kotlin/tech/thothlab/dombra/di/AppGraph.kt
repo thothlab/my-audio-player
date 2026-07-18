@@ -1,5 +1,6 @@
 package tech.thothlab.dombra.di
 
+import tech.thothlab.dombra.data.remote.subsonic.RemoteSourceRepository
 import tech.thothlab.dombra.domain.ports.ArtworkRepository
 import tech.thothlab.dombra.domain.ports.LibraryIndexer
 import tech.thothlab.dombra.domain.ports.LibraryRepository
@@ -19,6 +20,7 @@ interface AppGraph {
     val indexer: LibraryIndexer
     val artwork: ArtworkRepository
     val settings: SettingsRepository
+    val remote: RemoteSourceRepository
 
     /** Проиндексировать выбранную папку (SAF-дерево / каталог) и закрепить доступ. */
     suspend fun importTree(treeUri: String, displayName: String)

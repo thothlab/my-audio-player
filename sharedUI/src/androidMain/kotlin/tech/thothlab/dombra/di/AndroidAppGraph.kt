@@ -3,6 +3,8 @@ package tech.thothlab.dombra.di
 import android.content.Context
 import androidx.room.Room
 import com.russhwolf.settings.SharedPreferencesSettings
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.okhttp.OkHttp
 import kotlin.random.Random
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -13,6 +15,7 @@ import tech.thothlab.dombra.core.Log
 import tech.thothlab.dombra.core.RandomIdGenerator
 import tech.thothlab.dombra.core.SystemClock
 import tech.thothlab.dombra.data.indexer.DefaultLibraryIndexer
+import tech.thothlab.dombra.data.remote.subsonic.DefaultRemoteSourceRepository
 import tech.thothlab.dombra.data.repo.DefaultLibraryRepository
 import tech.thothlab.dombra.data.repo.DefaultPlaylistRepository
 import tech.thothlab.dombra.data.settings.DefaultSettingsRepository
@@ -64,6 +67,8 @@ fun createAndroidAppGraph(context: Context): AppGraph {
     val libraryIndexer = DefaultLibraryIndexer(storage, store, artworkRepo, clock, dispatchers)
     val libraryRepo = DefaultLibraryRepository(store)
     val playlistRepo = DefaultPlaylistRepository(store, clock, RandomIdGenerator())
+    val httpClient = HttpClient(OkHttp)
+    val remoteRepo = DefaultRemoteSourceRepository(httpClient, settingsRepo, scope)
 
     return object : AppGraph {
         override val playback = controller
@@ -72,6 +77,7 @@ fun createAndroidAppGraph(context: Context): AppGraph {
         override val indexer: LibraryIndexer = libraryIndexer
         override val artwork = artworkRepo
         override val settings = settingsRepo
+        override val remote = remoteRepo
 
         override suspend fun importTree(treeUri: String, displayName: String) {
             val log = Log.withTag("Import")
