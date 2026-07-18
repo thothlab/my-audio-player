@@ -48,6 +48,8 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
 
     var scrub by remember { mutableStateOf<Float?>(null) }
 
+    Box(Modifier.fillMaxSize()) {
+    CosmosBackground(CosmosScreen.Player)
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -145,6 +147,7 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
             Spacer(Modifier.height(12.dp))
             Text("⚠ ${err.message}", color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
         }
+    }
     }
 }
 
