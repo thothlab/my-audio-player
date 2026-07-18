@@ -42,7 +42,7 @@ fun createAndroidAppGraph(context: Context): AppGraph {
     ).buildDombraDatabase()
     val store = RoomLibraryStore(db)
     val storage = ContentUriStorageProvider(app, dispatchers.io)
-    val artwork = JavaFileArtworkRepository(app.cacheDir, dispatchers)
+    val artworkRepo = JavaFileArtworkRepository(app.cacheDir, dispatchers)
     val clock = SystemClock()
     val settings = DefaultSettingsRepository(
         SharedPreferencesSettings(app.getSharedPreferences("dombra", Context.MODE_PRIVATE)),
@@ -60,13 +60,14 @@ fun createAndroidAppGraph(context: Context): AppGraph {
         scope = scope,
         random = Random.Default,
     )
-    val libraryIndexer = DefaultLibraryIndexer(storage, store, artwork, clock, dispatchers)
+    val libraryIndexer = DefaultLibraryIndexer(storage, store, artworkRepo, clock, dispatchers)
     val libraryRepo = DefaultLibraryRepository(store)
 
     return object : AppGraph {
         override val playback = controller
         override val library: LibraryRepository = libraryRepo
         override val indexer: LibraryIndexer = libraryIndexer
+        override val artwork = artworkRepo
 
         override suspend fun importTree(treeUri: String, displayName: String) {
             val log = Log.withTag("Import")

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -114,6 +115,7 @@ fun DombraApp(
             items(tracks, key = { it.stableId }) { track ->
                 TrackRow(
                     track = track,
+                    artwork = graph.artwork,
                     isCurrent = track.stableId == player.currentTrack?.stableId,
                     onClick = { graph.playback.playNow(track, tracks) },
                 )
@@ -124,26 +126,43 @@ fun DombraApp(
 }
 
 @Composable
-private fun TrackRow(track: Track, isCurrent: Boolean, onClick: () -> Unit) {
-    Column(
+private fun TrackRow(
+    track: Track,
+    artwork: tech.thothlab.dombra.domain.ports.ArtworkRepository,
+    isCurrent: Boolean,
+    onClick: () -> Unit,
+) {
+    val accent = tech.thothlab.dombra.theme.LocalAccentColor.current
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(
-            text = track.title,
-            style = MaterialTheme.typography.bodyLarge,
-            color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        ArtworkImage(
+            artwork = artwork,
+            stableId = track.stableId,
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+            modifier = Modifier.size(48.dp),
+            iconScale = 0.5f,
         )
-        Text(
-            text = track.artistName,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = track.title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (isCurrent) accent else MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = track.artistName,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
