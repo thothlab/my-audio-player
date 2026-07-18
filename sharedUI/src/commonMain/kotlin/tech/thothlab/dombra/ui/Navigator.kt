@@ -14,6 +14,7 @@ sealed interface Screen {
     /** Список треков конкретной группы (исполнитель / альбом / плейлист). */
     data class Tracks(val title: String, val ref: TrackListRef) : Screen
 
+    data object Search : Screen
     data object Player : Screen
     data object Settings : Screen
 }

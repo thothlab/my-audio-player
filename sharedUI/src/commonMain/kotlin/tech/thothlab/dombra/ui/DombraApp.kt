@@ -77,7 +77,7 @@ private fun MainShell(
             },
             onOpenPlayer = { nav.push(Screen.Player) },
             onOpenSettings = { nav.push(Screen.Settings) },
-            onSearch = { /* экран поиска — T04 */ },
+            onSearch = { nav.push(Screen.Search) },
             onRefresh = {
                 scope.launch {
                     refreshing = true
@@ -106,6 +106,14 @@ private fun MainShell(
             player = player,
             onBack = { nav.pop() },
             onOpenPlayer = { nav.push(Screen.Player) },
+        )
+
+        Screen.Search -> SearchScreen(
+            graph = graph,
+            onClose = { nav.pop() },
+            onPlaySong = { track, list -> graph.playback.playNow(track, list) },
+            onOpenArtist = { nav.push(Screen.Tracks(it.name, TrackListRef.Artist(it.id))) },
+            onOpenAlbum = { nav.push(Screen.Tracks(it.title, TrackListRef.Album(it.id))) },
         )
 
         Screen.Player -> {
