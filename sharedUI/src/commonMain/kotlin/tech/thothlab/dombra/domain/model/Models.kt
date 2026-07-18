@@ -173,6 +173,18 @@ data class EqSettings(
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
+/** Accent-палитра — перенесена из Cosmos (`BackgroundColor`, hex RGB). Дефолт — violet. */
+enum class AccentColor(val hex: String, val label: String) {
+    VIOLET("b11491", "Violet"),
+    RED("e74c3c", "Red"),
+    BLUE("3498db", "Blue"),
+    GREEN("27ae60", "Green"),
+    ORANGE("f39c12", "Orange"),
+    PINK("e91e63", "Pink"),
+    TEAL("1abc9c", "Teal"),
+    PURPLE("9b59b6", "Purple"),
+}
+
 enum class AppLanguage(val tag: String) { SYSTEM(""), RUSSIAN("ru"), ENGLISH("en") }
 
 enum class DeletionPolicy { LIBRARY_ONLY, DELETE_FILE }
@@ -193,6 +205,7 @@ data class HomeSection(
 data class AppSettings(
     val language: AppLanguage = AppLanguage.SYSTEM,
     val theme: ThemeMode = ThemeMode.SYSTEM,
+    val accentColor: AccentColor = AccentColor.VIOLET,
     val homeSections: List<HomeSection> = HomeSectionId.entries.map { HomeSection(it) },
     val deletionPolicy: DeletionPolicy = DeletionPolicy.LIBRARY_ONLY,
     val dsdMode: DsdMode = DsdMode.PCM,

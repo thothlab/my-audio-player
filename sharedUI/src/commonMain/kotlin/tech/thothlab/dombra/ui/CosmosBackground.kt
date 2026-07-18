@@ -2,12 +2,12 @@ package tech.thothlab.dombra.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import tech.thothlab.dombra.theme.LocalAccentColor
 
 /**
  * Мягкий градиент-фон в духе Cosmos (`BackgroundTextureView`): цветной «глоу»
@@ -24,7 +24,7 @@ fun CosmosBackground(
     screen: CosmosScreen,
     modifier: Modifier = Modifier.fillMaxSize(),
 ) {
-    val accent = MaterialTheme.colorScheme.primary
+    val accent = LocalAccentColor.current
     Canvas(modifier) {
         val w = size.width
         val h = size.height

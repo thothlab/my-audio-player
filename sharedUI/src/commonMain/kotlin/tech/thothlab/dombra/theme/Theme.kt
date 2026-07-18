@@ -6,6 +6,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.*
+import tech.thothlab.dombra.domain.model.AccentColor
 
 private val LightColorScheme = lightColorScheme(
     primary = PrimaryLight,
@@ -93,7 +94,8 @@ internal fun AppTheme(
     val systemIsDark = isSystemInDarkTheme()
     val isDarkState = remember(systemIsDark) { mutableStateOf(systemIsDark) }
     CompositionLocalProvider(
-        LocalThemeIsDark provides isDarkState
+        LocalThemeIsDark provides isDarkState,
+        LocalAccentColor provides AccentColor.VIOLET.toColor(),
     ) {
         val isDark by isDarkState
         onThemeChanged(!isDark)
