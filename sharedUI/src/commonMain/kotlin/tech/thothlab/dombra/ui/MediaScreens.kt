@@ -21,8 +21,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Group
@@ -30,7 +32,10 @@ import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +44,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -47,12 +56,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import tech.thothlab.dombra.di.AppGraph
 import tech.thothlab.dombra.domain.model.Album
 import tech.thothlab.dombra.domain.model.Artist
 import tech.thothlab.dombra.domain.model.HomeSectionId
 import tech.thothlab.dombra.domain.model.Playlist
+import tech.thothlab.dombra.domain.model.SortOrder
 import tech.thothlab.dombra.domain.model.Track
+import tech.thothlab.dombra.domain.model.sortedByOrder
 import tech.thothlab.dombra.presentation.player.PlayerState
 
 /** Метаданные раздела «Медиатеки» — иконка, цвет плитки, заголовок и подпись (по образцу Cosmos). */
@@ -188,11 +200,11 @@ fun CollectionScreen(
     when (section) {
         HomeSectionId.ALL_SONGS -> {
             val tracks by graph.library.tracks().collectAsState(initial = emptyList())
-            TrackListScreen(graph, "Все песни", tracks, player, onBack, onOpenPlayer)
+            TrackListScreen(graph, "Все песни", "all", tracks, player, onBack, onOpenPlayer)
         }
         HomeSectionId.LIKED_SONGS -> {
             val tracks by graph.library.favoriteTracks().collectAsState(initial = emptyList())
-            TrackListScreen(graph, "Любимые песни", tracks, player, onBack, onOpenPlayer)
+            TrackListScreen(graph, "Любимые песни", "liked", tracks, player, onBack, onOpenPlayer)
         }
         HomeSectionId.ARTISTS -> {
             val artists by graph.library.artists().collectAsState(initial = emptyList())
@@ -249,20 +261,31 @@ fun TracksScreen(
             pwi?.items?.mapNotNull { byId[it.trackStableId] } ?: emptyList()
         }
     }
+    val collectionKey = when (ref) {
+        is TrackListRef.Artist -> "artist:${ref.id}"
+        is TrackListRef.Album -> "album:${ref.id}"
+        is TrackListRef.Playlist -> "playlist:${ref.id}"
+    }
     val tracks by flow.collectAsState(initial = emptyList())
-    TrackListScreen(graph, title, tracks, player, onBack, onOpenPlayer)
+    TrackListScreen(graph, title, collectionKey, tracks, player, onBack, onOpenPlayer)
 }
 
-/** Общий скаффолд списка треков: шапка с «назад» + список + мини-плеер. */
+/** Общий скаффолд списка треков: шапка (назад + заголовок + пилюля shuffle/sort) + список + мини-плеер. */
 @Composable
 private fun TrackListScreen(
     graph: AppGraph,
     title: String,
+    collectionKey: String,
     tracks: List<Track>,
     player: PlayerState,
     onBack: () -> Unit,
     onOpenPlayer: () -> Unit,
 ) {
+    val settings by graph.settings.settings.collectAsState(initial = null)
+    val scope = rememberCoroutineScope()
+    val order = settings?.sortOrders?.get(collectionKey) ?: SortOrder.MANUAL
+    val sorted = remember(tracks, order) { tracks.sortedByOrder(order) }
+
     Box(Modifier.fillMaxSize()) {
         CosmosBackground(CosmosScreen.Secondary)
         Column(
@@ -271,18 +294,39 @@ private fun TrackListScreen(
                 .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(horizontal = 16.dp),
         ) {
-            CollectionHeader(title, onBack)
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "назад") }
+                Text(
+                    title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = 4.dp).weight(1f),
+                )
+                SortShufflePill(
+                    order = order,
+                    onShuffle = { if (sorted.isNotEmpty()) graph.playback.shufflePlay(sorted) },
+                    onPick = { picked ->
+                        scope.launch {
+                            graph.settings.update { it.copy(sortOrders = it.sortOrders + (collectionKey to picked)) }
+                        }
+                    },
+                )
+            }
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
                 contentPadding = PaddingValues(bottom = if (player.currentTrack != null) 92.dp else 8.dp),
             ) {
-                items(tracks, key = { it.stableId }) { track ->
+                items(sorted, key = { it.stableId }) { track ->
                     TrackRow(
                         track = track,
                         artwork = graph.artwork,
                         isCurrent = track.stableId == player.currentTrack?.stableId,
-                        onClick = { graph.playback.playNow(track, tracks) },
+                        onClick = { graph.playback.playNow(track, sorted) },
                     )
                 }
             }
@@ -296,6 +340,43 @@ private fun TrackListScreen(
                 .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(horizontal = 12.dp, vertical = 10.dp),
         )
+    }
+}
+
+/** Пилюля справа в шапке списка: кнопка shuffle-play + меню сортировки (по образцу Cosmos). */
+@Composable
+private fun SortShufflePill(
+    order: SortOrder,
+    onShuffle: () -> Unit,
+    onPick: (SortOrder) -> Unit,
+) {
+    var menuOpen by remember { mutableStateOf(false) }
+    val accent = LocalAccentColorSafe()
+    Surface(
+        shape = RoundedCornerShape(24.dp),
+        color = accent.copy(alpha = 0.14f),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onShuffle) {
+                Icon(Icons.Filled.Shuffle, "в случайном порядке", tint = accent)
+            }
+            Box {
+                IconButton(onClick = { menuOpen = true }) {
+                    Icon(Icons.AutoMirrored.Filled.Sort, "сортировка", tint = accent)
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    SortOrder.entries.forEach { o ->
+                        DropdownMenuItem(
+                            text = { Text(o.label) },
+                            onClick = { onPick(o); menuOpen = false },
+                            trailingIcon = {
+                                if (o == order) Icon(Icons.Filled.Check, null, tint = accent)
+                            },
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

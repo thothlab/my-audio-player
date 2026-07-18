@@ -126,6 +126,13 @@ class PlaybackController(
         startCurrent(autoPlay = true)
     }
 
+    /** Проиграть коллекцию в случайном порядке: случайный старт + включённый shuffle (PRD-03 T03). */
+    fun shufflePlay(tracks: List<Track>) {
+        if (tracks.isEmpty()) return
+        playQueue(tracks, random.nextInt(tracks.size))
+        if (!_state.value.shuffled) toggleShuffle()
+    }
+
     // --- Транспорт ---
 
     fun togglePlayPause() {

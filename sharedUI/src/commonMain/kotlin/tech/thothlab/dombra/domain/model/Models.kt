@@ -215,6 +215,8 @@ data class AppSettings(
     val showSleepTimerButton: Boolean = false,
     /** Пройден ли онбординг первого запуска (PRD-03 T01). */
     val onboardingDone: Boolean = false,
+    /** Порядок сортировки по ключу коллекции (PRD-03 T03): "all"/"liked"/"artist:id"/… */
+    val sortOrders: Map<String, SortOrder> = emptyMap(),
 ) {
     /** Толерантность к новым секциям: недостающие добавляются в конец видимыми. */
     fun withAllSections(): AppSettings {
