@@ -1,12 +1,28 @@
 package tech.thothlab.dombra.ui
 
 import androidx.compose.runtime.mutableStateListOf
+import tech.thothlab.dombra.domain.model.HomeSectionId
 
 /** Экраны приложения (D-10 — собственная лёгкая навигация вместо Nav3 alpha). */
 sealed interface Screen {
-    data object Library : Screen
+    /** Главный экран-каталог «Медиатека». */
+    data object Home : Screen
+
+    /** Раздел «Медиатеки» (все песни / любимые / плейлисты / исполнители / альбомы). */
+    data class Collection(val section: HomeSectionId) : Screen
+
+    /** Список треков конкретной группы (исполнитель / альбом / плейлист). */
+    data class Tracks(val title: String, val ref: TrackListRef) : Screen
+
     data object Player : Screen
     data object Settings : Screen
+}
+
+/** Источник списка треков для [Screen.Tracks]. */
+sealed interface TrackListRef {
+    data class Artist(val id: String) : TrackListRef
+    data class Album(val id: String) : TrackListRef
+    data class Playlist(val id: String) : TrackListRef
 }
 
 /** Лёгкий стек навигации: push/pop, root не выталкивается. */

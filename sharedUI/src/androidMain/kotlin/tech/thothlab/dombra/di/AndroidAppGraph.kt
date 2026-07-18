@@ -14,6 +14,7 @@ import tech.thothlab.dombra.core.RandomIdGenerator
 import tech.thothlab.dombra.core.SystemClock
 import tech.thothlab.dombra.data.indexer.DefaultLibraryIndexer
 import tech.thothlab.dombra.data.repo.DefaultLibraryRepository
+import tech.thothlab.dombra.data.repo.DefaultPlaylistRepository
 import tech.thothlab.dombra.data.settings.DefaultSettingsRepository
 import tech.thothlab.dombra.data.store.room.DombraDatabase
 import tech.thothlab.dombra.data.store.room.RoomLibraryStore
@@ -62,10 +63,12 @@ fun createAndroidAppGraph(context: Context): AppGraph {
     )
     val libraryIndexer = DefaultLibraryIndexer(storage, store, artworkRepo, clock, dispatchers)
     val libraryRepo = DefaultLibraryRepository(store)
+    val playlistRepo = DefaultPlaylistRepository(store, clock, RandomIdGenerator())
 
     return object : AppGraph {
         override val playback = controller
         override val library: LibraryRepository = libraryRepo
+        override val playlists = playlistRepo
         override val indexer: LibraryIndexer = libraryIndexer
         override val artwork = artworkRepo
         override val settings = settingsRepo
@@ -78,6 +81,21 @@ fun createAndroidAppGraph(context: Context): AppGraph {
             libraryIndexer.scan(listOf(dir), fullScan = true).collect { event ->
                 log.i { "scan: $event" }
             }
+        }
+
+        override suspend fun refresh() {
+            // Ре-скан всех ранее закреплённых SAF-деревьев (persistable permissions).
+            val sources = app.contentResolver.persistedUriPermissions
+                .filter { it.isReadPermission }
+                .map { perm ->
+                    SourceRef(
+                        uri = perm.uri.toString(),
+                        displayName = perm.uri.lastPathSegment ?: "Папка",
+                        isDirectory = true,
+                    )
+                }
+            if (sources.isEmpty()) return
+            libraryIndexer.scan(sources, fullScan = true).collect { }
         }
     }
 }
