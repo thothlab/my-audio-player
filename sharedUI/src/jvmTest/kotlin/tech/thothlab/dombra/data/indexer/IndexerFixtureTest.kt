@@ -63,11 +63,11 @@ class IndexerFixtureTest {
     @Test
     fun scanIndexesSupportedAndSkipsCorrupted() = runTest {
         val done = indexer.scan(listOf(dirRef()), fullScan = true).last() as ScanEvent.Done
-        // 9 аудиофайлов: mp3, flac, 24bit.flac, wav, m4a, ogg, opus, no-tags.mp3, corrupted.mp3
-        assertEquals(9, done.stats.found)
-        assertEquals(8, done.stats.added)
+        // 10 аудиофайлов: mp3, flac, 24bit.flac, wav, m4a, fixture_alac.m4a, ogg, opus, no-tags.mp3, corrupted.mp3
+        assertEquals(10, done.stats.found)
+        assertEquals(9, done.stats.added)
         assertEquals(1, done.stats.failed) // corrupted.mp3
-        assertEquals(8, store.getAllTracks().size)
+        assertEquals(9, store.getAllTracks().size)
     }
 
     @Test
@@ -76,8 +76,8 @@ class IndexerFixtureTest {
         val second = indexer.scan(listOf(dirRef()), fullScan = true).last() as ScanEvent.Done
         assertEquals(0, second.stats.added)
         assertEquals(0, second.stats.updated)
-        assertEquals(8, second.stats.skipped)
-        assertEquals(8, store.getAllTracks().size)
+        assertEquals(9, second.stats.skipped)
+        assertEquals(9, store.getAllTracks().size)
     }
 
     @Test
@@ -106,7 +106,7 @@ class IndexerFixtureTest {
         val after = store.getAllTracks().first { it.sourceDisplayName == "renamed-song.mp3" }
         assertEquals(track.stableId, after.stableId)
         assertTrue(after.stableId in store.getFavorites())
-        assertEquals(8, store.getAllTracks().size, "no duplicate after rename")
+        assertEquals(9, store.getAllTracks().size, "no duplicate after rename")
     }
 
     @Test
@@ -114,7 +114,7 @@ class IndexerFixtureTest {
         indexer.scan(listOf(dirRef()), fullScan = true).last()
         assertTrue(File(dir, "fixture.wav").delete())
         val done = indexer.scan(listOf(dirRef()), fullScan = true).last() as ScanEvent.Done
-        assertEquals(7, store.getAllTracks().size)
+        assertEquals(8, store.getAllTracks().size)
         assertTrue(store.getAllTracks().none { it.sourceDisplayName == "fixture.wav" })
         assertNotNull(done)
     }

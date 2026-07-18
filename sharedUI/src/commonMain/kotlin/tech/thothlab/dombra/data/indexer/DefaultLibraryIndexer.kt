@@ -169,7 +169,13 @@ class DefaultLibraryIndexer(
             } else null
 
             val meta = MetadataParser.parse(head, tail, stat.size, full)
-                ?: return FileResult.Failed // содержимое не распознано — «пропущен с ошибкой»
+                ?: run {
+                    log.w {
+                        "index failed (не распознано) ${file.displayName} size=${stat.size} " +
+                            "fmt=${MetadataParser.detectFormat(head)} fullRead=${full != null}"
+                    }
+                    return FileResult.Failed
+                }
 
             // Fallback-метаданные (§5.3)
             val fallbackTitle = file.displayName.substringBeforeLast('.')
@@ -219,7 +225,11 @@ class DefaultLibraryIndexer(
             )
             return if (existing == null) FileResult.Added(track) else FileResult.Updated(track)
         } catch (e: DombraException) {
-            log.w { "index failed for ${Log.redactUri(file.uri)}: ${e.error.message}" }
+            log.w { "index failed (ошибка) ${file.displayName}: ${e.error.message}" }
+            return FileResult.Failed
+        } catch (e: Exception) {
+            // Непредвиденное (напр. сбой SAF-чтения крупного файла) — не ронять весь scan
+            log.w { "index failed (исключение) ${file.displayName}: ${e.message}" }
             return FileResult.Failed
         }
     }

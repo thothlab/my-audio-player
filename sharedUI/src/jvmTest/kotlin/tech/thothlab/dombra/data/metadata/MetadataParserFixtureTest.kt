@@ -89,6 +89,17 @@ class MetadataParserFixtureTest {
     }
 
     @Test
+    fun alacM4aTags() {
+        // ALAC в контейнере m4a — часть библиотеки пользователя (failed=8 при индексации)
+        val meta = assertNotNull(parse("fixture_alac.m4a"), "ALAC m4a должен парситься")
+        assertEquals(AudioFormat.M4A, meta.format)
+        assertEquals("Alac Fixture", meta.title)
+        assertEquals("Test Artist", meta.artist)
+        assertEquals("Test Album", meta.album)
+    }
+
+
+    @Test
     fun oggVorbis() {
         val meta = assertNotNull(parse("fixture.ogg"))
         assertEquals(AudioFormat.OGG_VORBIS, meta.format)
