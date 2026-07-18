@@ -3,8 +3,6 @@ package tech.thothlab.dombra.di
 import android.content.Context
 import androidx.room.Room
 import com.russhwolf.settings.SharedPreferencesSettings
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.okhttp.OkHttp
 import kotlin.random.Random
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -67,7 +65,7 @@ fun createAndroidAppGraph(context: Context): AppGraph {
     val libraryIndexer = DefaultLibraryIndexer(storage, store, artworkRepo, clock, dispatchers)
     val libraryRepo = DefaultLibraryRepository(store)
     val playlistRepo = DefaultPlaylistRepository(store, clock, RandomIdGenerator())
-    val httpClient = HttpClient(OkHttp)
+    val httpClient = tech.thothlab.dombra.platform.createAndroidHttpClient()
     val remoteRepo = DefaultRemoteSourceRepository(httpClient, settingsRepo, scope)
 
     return object : AppGraph {
