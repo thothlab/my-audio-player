@@ -19,6 +19,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
@@ -42,6 +45,12 @@ fun DombraApp(
     val tracks: List<Track> by graph.library.tracks().collectAsState(initial = emptyList())
     val scanning: Boolean by graph.indexer.isScanning.collectAsState(initial = false)
     val player: PlayerState by graph.playback.state.collectAsState()
+
+    var showPlayer by remember { mutableStateOf(false) }
+    if (showPlayer && player.currentTrack != null) {
+        PlayerScreen(graph, onBack = { showPlayer = false })
+        return@AppTheme
+    }
 
     Column(
         modifier = Modifier
@@ -79,7 +88,7 @@ fun DombraApp(
         player.currentTrack?.let { current ->
             HorizontalDivider()
             Row(
-                modifier = Modifier.fillMaxWidth().clickable { graph.playback.togglePlayPause() },
+                modifier = Modifier.fillMaxWidth().clickable { showPlayer = true },
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -88,9 +97,9 @@ fun DombraApp(
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(vertical = 8.dp),
+                    modifier = Modifier.padding(vertical = 8.dp).weight(1f, fill = false),
                 )
-                Text(formatMs(player.positionMs), style = MaterialTheme.typography.bodySmall)
+                Text("⌃", style = MaterialTheme.typography.titleMedium)
             }
             HorizontalDivider()
         }
@@ -133,11 +142,4 @@ private fun TrackRow(track: Track, isCurrent: Boolean, onClick: () -> Unit) {
             overflow = TextOverflow.Ellipsis,
         )
     }
-}
-
-private fun formatMs(ms: Long): String {
-    val totalSec = ms / 1000
-    val m = totalSec / 60
-    val s = totalSec % 60
-    return "$m:${s.toString().padStart(2, '0')}"
 }
