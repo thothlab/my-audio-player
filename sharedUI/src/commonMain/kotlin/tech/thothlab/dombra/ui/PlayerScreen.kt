@@ -2,10 +2,12 @@ package tech.thothlab.dombra.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,6 +24,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -30,16 +36,23 @@ import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,29 +64,35 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 import tech.thothlab.dombra.di.AppGraph
 import tech.thothlab.dombra.domain.model.RepeatMode
+import tech.thothlab.dombra.domain.model.Track
 import tech.thothlab.dombra.presentation.player.PlayerState
 import tech.thothlab.dombra.theme.LocalAccentColor
 
 /**
  * Полноэкранный плеер в облике Cosmos (`Views/Player/PlayerViews.swift`):
- * крупная обложка со скруглением/тенью, title/artist, тонкий accent seek-бар,
- * контролы в матовом скруглённом контейнере (иконки монохромные, accent на активных).
+ * обложка-карусель (соседние обложки выглядывают) со скруглением/тенью, title/artist,
+ * кнопки «в избранное»/«в плейлист», тонкий accent seek-бар, матовые контролы.
  */
 @Composable
 fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
     val state: PlayerState by graph.playback.state.collectAsState()
     val track = state.currentTrack
     val accent = LocalAccentColor.current
+    val scope = rememberCoroutineScope()
 
     var scrub by remember { mutableStateOf<Float?>(null) }
     var artDrag by remember { mutableStateOf(0f) }
+    var showPlaylistSheet by remember { mutableStateOf(false) }
     val dur = (state.durationMs ?: 0L).toFloat()
     val fraction = (scrub ?: if (dur > 0f) state.positionMs.toFloat() / dur else 0f).coerceIn(0f, 1f)
 
@@ -87,23 +106,25 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "свернуть")
+                IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
+                    Icon(
+                        Icons.Filled.KeyboardArrowDown,
+                        contentDescription = "свернуть",
+                        modifier = Modifier.size(36.dp),
+                    )
                 }
                 Spacer(Modifier.weight(1f))
             }
 
             Spacer(Modifier.weight(1f))
 
-            // Свайп обложки влево/вправо → смена трека (как в Cosmos).
-            ArtworkImage(
-                artwork = graph.artwork,
-                stableId = track?.stableId,
-                shape = RoundedCornerShape(12.dp),
+            // Обложка-карусель: соседние обложки выглядывают слева/справа, свайп меняет трек.
+            val prevId = state.queue.getOrNull(state.currentIndex - 1)?.track?.stableId
+            val nextId = state.queue.getOrNull(state.currentIndex + 1)?.track?.stableId
+            BoxWithConstraints(
                 modifier = Modifier
-                    .fillMaxWidth(0.82f)
+                    .fillMaxWidth()
                     .aspectRatio(1f)
-                    .offset { IntOffset(artDrag.roundToInt(), 0) }
                     .pointerInput(track?.stableId) {
                         detectHorizontalDragGestures(
                             onDragEnd = {
@@ -115,12 +136,17 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
                             },
                             onDragCancel = { artDrag = 0f },
                         ) { _, delta -> artDrag += delta }
-                    }
-                    .shadow(12.dp, RoundedCornerShape(12.dp)),
-                iconScale = 0.22f,
-            )
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                val cardW = maxWidth * 0.80f
+                val stepPx = with(LocalDensity.current) { (cardW + 14.dp).toPx() }
+                if (prevId != null) CarouselCard(graph, prevId, -1, cardW, stepPx, artDrag, current = false)
+                if (nextId != null) CarouselCard(graph, nextId, 1, cardW, stepPx, artDrag, current = false)
+                CarouselCard(graph, track?.stableId, 0, cardW, stepPx, artDrag, current = true)
+            }
 
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(24.dp))
 
             Text(
                 text = track?.title ?: "нет трека",
@@ -137,7 +163,33 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
                 overflow = TextOverflow.Ellipsis,
             )
 
-            Spacer(Modifier.height(20.dp))
+            // Кнопки «в избранное» / «в плейлист».
+            if (track != null) {
+                val fav by remember(track.stableId) { graph.library.isFavorite(track.stableId) }
+                    .collectAsState(initial = false)
+                Row(
+                    modifier = Modifier.padding(top = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    IconButton(onClick = { scope.launch { graph.library.setFavorite(track.stableId, !fav) } }) {
+                        Icon(
+                            if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                            contentDescription = "в избранное",
+                            tint = if (fav) accent else MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                    IconButton(onClick = { showPlaylistSheet = true }) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.PlaylistAdd,
+                            contentDescription = "в плейлист",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(14.dp))
 
             SeekBar(
                 fraction = fraction,
@@ -165,6 +217,98 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
 
             Spacer(Modifier.weight(1f))
         }
+    }
+
+    if (showPlaylistSheet && track != null) {
+        AddToPlaylistSheet(graph = graph, track = track, onDismiss = { showPlaylistSheet = false })
+    }
+}
+
+/** Обложка в карусели: центральная в фокусе (тень), соседние — приглушены (α) и сдвинуты. */
+@Composable
+private fun CarouselCard(
+    graph: AppGraph,
+    stableId: String?,
+    slot: Int,
+    cardWidth: Dp,
+    stepPx: Float,
+    dragPx: Float,
+    current: Boolean,
+) {
+    ArtworkImage(
+        artwork = graph.artwork,
+        stableId = stableId,
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .width(cardWidth)
+            .aspectRatio(1f)
+            .offset { IntOffset((slot * stepPx + dragPx).roundToInt(), 0) }
+            .then(
+                if (current) Modifier.shadow(12.dp, RoundedCornerShape(12.dp))
+                else Modifier.graphicsLayer { alpha = 0.5f },
+            ),
+        iconScale = 0.22f,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddToPlaylistSheet(graph: AppGraph, track: Track, onDismiss: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    val playlists by graph.playlists.playlists().collectAsState(initial = emptyList())
+    var showCreate by remember { mutableStateOf(false) }
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.padding(bottom = 24.dp)) {
+            Text(
+                "Добавить в плейлист",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+            )
+            playlists.forEach { pl ->
+                ListItem(
+                    headlineContent = { Text(pl.title) },
+                    modifier = Modifier.clickable {
+                        scope.launch {
+                            graph.playlists.addTrack(pl.id, track.stableId)
+                            onDismiss()
+                        }
+                    },
+                )
+            }
+            ListItem(
+                headlineContent = { Text("Создать плейлист") },
+                leadingContent = { Icon(Icons.Filled.Add, null) },
+                modifier = Modifier.clickable { showCreate = true },
+            )
+        }
+    }
+
+    if (showCreate) {
+        var name by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showCreate = false },
+            title = { Text("Новый плейлист") },
+            text = {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    singleLine = true,
+                    placeholder = { Text("Название") },
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    scope.launch {
+                        val pl = graph.playlists.create(name.ifBlank { "Новый плейлист" })
+                        graph.playlists.addTrack(pl.id, track.stableId)
+                        showCreate = false
+                        onDismiss()
+                    }
+                }) { Text("Создать") }
+            },
+            dismissButton = { TextButton(onClick = { showCreate = false }) { Text("Отмена") } },
+        )
     }
 }
 
