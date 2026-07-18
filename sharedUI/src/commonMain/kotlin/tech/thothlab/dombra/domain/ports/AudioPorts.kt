@@ -23,6 +23,8 @@ data class AudioSource(
     val displayName: String,
     val format: AudioFormat,
     val replayGainDb: Double? = null,
+    val title: String? = null,
+    val artist: String? = null,
 )
 
 interface AudioEngine {

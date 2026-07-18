@@ -418,4 +418,6 @@ internal fun Track.toAudioSource(gainDb: Double?) = AudioSource(
         AudioFormat.byExtension(sourceDisplayName.substringAfterLast('.', ""))
     } else format,
     replayGainDb = gainDb,
+    title = title,
+    artist = artistName,
 )

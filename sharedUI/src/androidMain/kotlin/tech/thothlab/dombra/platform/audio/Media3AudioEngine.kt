@@ -1,16 +1,19 @@
 package tech.thothlab.dombra.platform.audio
 
+import android.content.ComponentName
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
-import androidx.media3.exoplayer.DefaultRenderersFactory
-import androidx.media3.exoplayer.ExoPlayer
-import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.NextRenderersFactory
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
+import java.util.concurrent.Executor
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -33,13 +36,13 @@ import tech.thothlab.dombra.domain.ports.AudioSource
 import tech.thothlab.dombra.domain.ports.EngineState
 
 /**
- * Android аудио-движок на media3/ExoPlayer (§7.2 ТЗ).
+ * Android аудио-движок (§7.2 ТЗ). Плеер (ExoPlayer + FFmpeg) живёт в
+ * [PlaybackService] (`MediaSessionService`) — так воспроизведение переживает
+ * сворачивание, и появляются нотификация/локскрин/кнопки гарнитуры «бесплатно».
+ * Движок управляет им через [MediaController] (тот же `Player`-интерфейс),
+ * подключение асинхронное. Состояние — через [Player.Listener], позиция — поллинг ≤4 Гц.
  *
- * ExoPlayer привязан к потоку своего Looper: движок создаёт плеер и делает все
- * вызовы на main-потоке (`Dispatchers.Main`), состояние получает через
- * [Player.Listener]. Декодирование форматов — на стороне media3 (см. [Media3Capability]).
- *
- * ReplayGain (dB-gain) в базовом media3 нет без кастомного AudioProcessor — [supportsGainDb] = false (T11).
+ * ReplayGain (dB-gain) отложен на T11 — [supportsGainDb] = false.
  */
 class Media3AudioEngine(
     context: Context,
@@ -61,90 +64,97 @@ class Media3AudioEngine(
     )
     override val positionMs: Flow<Long> = _position
 
-    private var player: ExoPlayer? = null
+    private var player: Player? = null
+    private val ready = CompletableDeferred<Player>()
     private var positionJob: Job? = null
     private var durationMs: Long? = null
 
     @Volatile private var volume: Float = 1f
 
-    private fun onMain(block: () -> Unit) {
-        if (Looper.myLooper() == Looper.getMainLooper()) block() else mainHandler.post(block)
+    init {
+        // Асинхронное подключение MediaController к PlaybackService (на main-потоке).
+        val token = SessionToken(appContext, ComponentName(appContext, PlaybackService::class.java))
+        val future = MediaController.Builder(appContext, token).buildAsync()
+        future.addListener(
+            {
+                val c = runCatching { future.get() }.getOrNull()
+                if (c == null) {
+                    log.w { "MediaController не подключился" }
+                    return@addListener
+                }
+                c.volume = volume
+                c.addListener(playerListener)
+                player = c
+                ready.complete(c)
+            },
+            Executor { mainHandler.post(it) },
+        )
     }
 
-    /** Создаётся лениво на main-потоке. */
-    private fun ensurePlayer(): ExoPlayer {
-        player?.let { return it }
-        // NextRenderersFactory добавляет prebuilt FFmpeg-декодеры (ALAC/FLAC/DTS/…).
-        // MODE_ON: аппаратные кодеки первыми, FFmpeg — фолбэк для того, что платформа не тянет.
-        val renderers = NextRenderersFactory(appContext)
-            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
-        val p = ExoPlayer.Builder(appContext, renderers).build()
-        p.volume = volume
-        p.addListener(object : Player.Listener {
-            override fun onPlaybackStateChanged(playbackState: Int) {
-                when (playbackState) {
-                    Player.STATE_BUFFERING -> _state.value = EngineState.Preparing
-                    Player.STATE_READY -> {
-                        durationMs = player?.duration?.takeIf { it != C.TIME_UNSET }
-                        _state.value = if (player?.isPlaying == true) {
-                            EngineState.Playing(durationMs)
-                        } else {
-                            EngineState.Ready(durationMs)
-                        }
+    private val playerListener = object : Player.Listener {
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            when (playbackState) {
+                Player.STATE_BUFFERING -> _state.value = EngineState.Preparing
+                Player.STATE_READY -> {
+                    durationMs = player?.duration?.takeIf { it != C.TIME_UNSET }
+                    _state.value = if (player?.isPlaying == true) {
+                        EngineState.Playing(durationMs)
+                    } else {
+                        EngineState.Ready(durationMs)
                     }
-                    Player.STATE_ENDED -> {
-                        stopPositionUpdates()
-                        emitPosition()
-                        _state.value = EngineState.Completed
-                    }
-                    Player.STATE_IDLE -> Unit
                 }
-            }
-
-            override fun onIsPlayingChanged(isPlaying: Boolean) {
-                if (isPlaying) {
-                    _state.value = EngineState.Playing(durationMs)
-                    startPositionUpdates()
-                } else {
+                Player.STATE_ENDED -> {
                     stopPositionUpdates()
-                    // Пауза — только из READY; ENDED/IDLE не перетирать.
-                    if (player?.playbackState == Player.STATE_READY) {
-                        _state.value = EngineState.Paused(durationMs)
-                    }
+                    emitPosition()
+                    _state.value = EngineState.Completed
                 }
+                Player.STATE_IDLE -> Unit
             }
+        }
 
-            override fun onTracksChanged(tracks: Tracks) {
-                // Есть аудио-дорожка, но ни одна не декодируется (нет кодека под формат) →
-                // не притворяемся, что играем: честная ошибка, трек пропускается.
-                val audio = tracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO }
-                if (audio.isEmpty()) return
-                val playable = audio.any { g -> (0 until g.length).any { g.isTrackSupported(it) } }
-                if (!playable) {
-                    val mime = audio.first().getTrackFormat(0).sampleMimeType
-                    val friendly = when (mime) {
-                        "audio/alac" -> "ALAC (Apple Lossless)"
-                        "audio/flac" -> "FLAC"
-                        else -> mime ?: "аудио"
-                    }
-                    log.w { "нет декодера для дорожки: $mime" }
-                    stopPositionUpdates()
-                    _state.value = EngineState.Failed(
-                        DombraError.FormatUnsupported(friendly, capability.backendName),
-                    )
-                }
-            }
-
-            override fun onPlayerError(error: PlaybackException) {
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            if (isPlaying) {
+                _state.value = EngineState.Playing(durationMs)
+                startPositionUpdates()
+            } else {
                 stopPositionUpdates()
-                log.w { "ExoPlayer error: ${error.errorCodeName}" }
+                if (player?.playbackState == Player.STATE_READY) {
+                    _state.value = EngineState.Paused(durationMs)
+                }
+            }
+        }
+
+        override fun onTracksChanged(tracks: Tracks) {
+            // Есть аудио-дорожка, но ни одна не декодируется → честная ошибка, не молчаливая имитация.
+            val audio = tracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO }
+            if (audio.isEmpty()) return
+            val playable = audio.any { g -> (0 until g.length).any { g.isTrackSupported(it) } }
+            if (!playable) {
+                val mime = audio.first().getTrackFormat(0).sampleMimeType
+                val friendly = when (mime) {
+                    "audio/alac" -> "ALAC (Apple Lossless)"
+                    "audio/flac" -> "FLAC"
+                    else -> mime ?: "аудио"
+                }
+                log.w { "нет декодера для дорожки: $mime" }
+                stopPositionUpdates()
                 _state.value = EngineState.Failed(
-                    DombraError.PlaybackFailed(error.message ?: "Ошибка ExoPlayer", retryable = true),
+                    DombraError.FormatUnsupported(friendly, capability.backendName),
                 )
             }
-        })
-        player = p
-        return p
+        }
+
+        override fun onPlayerError(error: PlaybackException) {
+            stopPositionUpdates()
+            log.w { "player error: ${error.errorCodeName}" }
+            _state.value = EngineState.Failed(
+                DombraError.PlaybackFailed(error.message ?: "Ошибка воспроизведения", retryable = true),
+            )
+        }
+    }
+
+    private fun onMain(block: () -> Unit) {
+        if (Looper.myLooper() == Looper.getMainLooper()) block() else mainHandler.post(block)
     }
 
     override suspend fun prepare(source: AudioSource) = withContext(Dispatchers.Main.immediate) {
@@ -154,12 +164,21 @@ class Media3AudioEngine(
             )
             return@withContext
         }
-        val p = ensurePlayer()
+        val c = player ?: ready.await()
         _state.value = EngineState.Preparing
         durationMs = null
-        p.setMediaItem(MediaItem.fromUri(source.uri))
-        p.playWhenReady = false
-        p.prepare() // Ready/Failed придут через listener
+        val item = MediaItem.Builder()
+            .setUri(source.uri)
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(source.title ?: source.displayName)
+                    .setArtist(source.artist)
+                    .build(),
+            )
+            .build()
+        c.setMediaItem(item)
+        c.playWhenReady = false
+        c.prepare()
         emitPosition()
     }
 
@@ -167,7 +186,7 @@ class Media3AudioEngine(
 
     override fun pause() = onMain { player?.pause() }
 
-    override suspend fun seekTo(positionMs: Long) = withContext(Dispatchers.Main.immediate) {
+    override suspend fun seekTo(positionMs: Long): Unit = withContext(Dispatchers.Main.immediate) {
         player?.seekTo(positionMs.coerceAtLeast(0L))
         emitPosition()
     }
@@ -187,7 +206,6 @@ class Media3AudioEngine(
         onMain { player?.volume = this.volume }
     }
 
-    // media3 baseline не даёт dB-gain без кастомного AudioProcessor — ReplayGain отложен на T11.
     override val supportsGainDb: Boolean = false
 
     override fun setGainDb(gainDb: Double) = Unit
