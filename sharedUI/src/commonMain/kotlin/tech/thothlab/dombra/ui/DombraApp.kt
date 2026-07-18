@@ -26,11 +26,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import tech.thothlab.dombra.di.AppGraph
 import tech.thothlab.dombra.domain.model.AppSettings
 import tech.thothlab.dombra.domain.model.Track
@@ -38,9 +43,9 @@ import tech.thothlab.dombra.presentation.player.PlayerState
 import tech.thothlab.dombra.theme.AppTheme
 
 /**
- * Корневой UI Dombra: собственная лёгкая навигация (Navigator/[Screen]) —
- * библиотека ↔ плеер ↔ настройки. Библиотека держит нижний мини-плеер (тап → плеер);
- * системная «назад» уходит на предыдущий экран.
+ * Корневой UI Dombra: сплеш → (первый запуск) онбординг → основная оболочка.
+ * Основная оболочка — собственная лёгкая навигация (Navigator/[Screen]): библиотека ↔
+ * плеер ↔ настройки; библиотека держит нижний мини-плеер; системная «назад» уходит назад.
  */
 @Composable
 fun DombraApp(
@@ -48,34 +53,62 @@ fun DombraApp(
     onPickFolder: (() -> Unit)? = null,
     onThemeChanged: @Composable (isDark: Boolean) -> Unit = {},
 ) {
-    val appSettings by graph.settings.settings.collectAsState(initial = AppSettings())
-    AppTheme(onThemeChanged, accent = appSettings.accentColor, themeMode = appSettings.theme) {
-        val nav = remember { Navigator(Screen.Library) }
-        val player: PlayerState by graph.playback.state.collectAsState()
+    // initial = null → пока реальные настройки не загрузились, держим сплеш и не мигаем онбордингом.
+    val appSettings by graph.settings.settings.collectAsState(initial = null)
+    val settings = appSettings ?: AppSettings()
+    val scope = rememberCoroutineScope()
 
-        // Системная кнопка «назад» (Android) → предыдущий экран.
-        PlatformBackHandler(enabled = nav.canPop) { nav.pop() }
+    AppTheme(onThemeChanged, accent = settings.accentColor, themeMode = settings.theme) {
+        var splashElapsed by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) {
+            delay(1000)
+            splashElapsed = true
+        }
 
-        when (nav.current) {
-            Screen.Library -> LibraryScreen(
-                graph = graph,
-                player = player,
+        when {
+            !(appSettings != null && splashElapsed) -> SplashScreen()
+
+            !settings.onboardingDone -> OnboardingScreen(
                 onPickFolder = onPickFolder,
-                onOpenSettings = { nav.push(Screen.Settings) },
-                onOpenPlayer = { nav.push(Screen.Player) },
+                onFinish = { scope.launch { graph.settings.update { it.copy(onboardingDone = true) } } },
             )
 
-            Screen.Player -> {
-                if (player.currentTrack != null) {
-                    PlayerScreen(graph, onBack = { nav.pop() })
-                } else {
-                    // Трек исчез (очередь очищена) — вернуться из плеера.
-                    LaunchedEffect(Unit) { nav.pop() }
-                }
-            }
-
-            Screen.Settings -> SettingsScreen(graph, appSettings, onBack = { nav.pop() })
+            else -> MainShell(graph, onPickFolder, settings)
         }
+    }
+}
+
+@Composable
+private fun MainShell(
+    graph: AppGraph,
+    onPickFolder: (() -> Unit)?,
+    settings: AppSettings,
+) {
+    val nav = remember { Navigator(Screen.Library) }
+    val player: PlayerState by graph.playback.state.collectAsState()
+
+    // Системная кнопка «назад» (Android) → предыдущий экран.
+    PlatformBackHandler(enabled = nav.canPop) { nav.pop() }
+
+    when (nav.current) {
+        Screen.Library -> LibraryScreen(
+            graph = graph,
+            player = player,
+            onPickFolder = onPickFolder,
+            onOpenSettings = { nav.push(Screen.Settings) },
+            onOpenPlayer = { nav.push(Screen.Player) },
+        )
+
+        Screen.Player -> {
+            if (player.currentTrack != null) {
+                PlayerScreen(graph, onBack = { nav.pop() })
+            } else {
+                // Трек исчез (очередь очищена) — вернуться из плеера.
+                LaunchedEffect(Unit) { nav.pop() }
+            }
+        }
+
+        Screen.Settings -> SettingsScreen(graph, settings, onBack = { nav.pop() })
     }
 }
 

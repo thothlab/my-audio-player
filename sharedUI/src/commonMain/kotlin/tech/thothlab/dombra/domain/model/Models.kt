@@ -213,6 +213,8 @@ data class AppSettings(
     val replayGainPreampDb: Double = 0.0,
     val showLyricsButton: Boolean = true,
     val showSleepTimerButton: Boolean = false,
+    /** Пройден ли онбординг первого запуска (PRD-03 T01). */
+    val onboardingDone: Boolean = false,
 ) {
     /** Толерантность к новым секциям: недостающие добавляются в конец видимыми. */
     fun withAllSections(): AppSettings {
