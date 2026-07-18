@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -52,7 +53,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 import tech.thothlab.dombra.di.AppGraph
 import tech.thothlab.dombra.domain.model.RepeatMode
 import tech.thothlab.dombra.presentation.player.PlayerState
@@ -70,6 +73,7 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
     val accent = LocalAccentColor.current
 
     var scrub by remember { mutableStateOf<Float?>(null) }
+    var artDrag by remember { mutableStateOf(0f) }
     val dur = (state.durationMs ?: 0L).toFloat()
     val fraction = (scrub ?: if (dur > 0f) state.positionMs.toFloat() / dur else 0f).coerceIn(0f, 1f)
 
@@ -91,6 +95,7 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
 
             Spacer(Modifier.weight(1f))
 
+            // Свайп обложки влево/вправо → смена трека (как в Cosmos).
             ArtworkImage(
                 artwork = graph.artwork,
                 stableId = track?.stableId,
@@ -98,6 +103,19 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth(0.82f)
                     .aspectRatio(1f)
+                    .offset { IntOffset(artDrag.roundToInt(), 0) }
+                    .pointerInput(track?.stableId) {
+                        detectHorizontalDragGestures(
+                            onDragEnd = {
+                                when {
+                                    artDrag <= -SWIPE_THRESHOLD -> graph.playback.next()
+                                    artDrag >= SWIPE_THRESHOLD -> graph.playback.previous()
+                                }
+                                artDrag = 0f
+                            },
+                            onDragCancel = { artDrag = 0f },
+                        ) { _, delta -> artDrag += delta }
+                    }
                     .shadow(12.dp, RoundedCornerShape(12.dp)),
                 iconScale = 0.22f,
             )
@@ -246,6 +264,8 @@ private fun SeekBar(
         }
     }
 }
+
+private const val SWIPE_THRESHOLD = 120f
 
 internal fun formatTime(ms: Long): String {
     val totalSec = (ms / 1000).coerceAtLeast(0)

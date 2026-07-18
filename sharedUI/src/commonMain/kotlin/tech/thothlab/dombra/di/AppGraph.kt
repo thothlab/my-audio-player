@@ -3,6 +3,7 @@ package tech.thothlab.dombra.di
 import tech.thothlab.dombra.domain.ports.ArtworkRepository
 import tech.thothlab.dombra.domain.ports.LibraryIndexer
 import tech.thothlab.dombra.domain.ports.LibraryRepository
+import tech.thothlab.dombra.domain.ports.SettingsRepository
 import tech.thothlab.dombra.presentation.player.PlaybackController
 
 /**
@@ -15,6 +16,7 @@ interface AppGraph {
     val library: LibraryRepository
     val indexer: LibraryIndexer
     val artwork: ArtworkRepository
+    val settings: SettingsRepository
 
     /** Проиндексировать выбранную папку (SAF-дерево / каталог) и закрепить доступ. */
     suspend fun importTree(treeUri: String, displayName: String)

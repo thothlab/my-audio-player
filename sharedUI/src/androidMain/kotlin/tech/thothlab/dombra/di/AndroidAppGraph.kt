@@ -44,7 +44,7 @@ fun createAndroidAppGraph(context: Context): AppGraph {
     val storage = ContentUriStorageProvider(app, dispatchers.io)
     val artworkRepo = JavaFileArtworkRepository(app.cacheDir, dispatchers)
     val clock = SystemClock()
-    val settings = DefaultSettingsRepository(
+    val settingsRepo = DefaultSettingsRepository(
         SharedPreferencesSettings(app.getSharedPreferences("dombra", Context.MODE_PRIVATE)),
     )
     val engine = Media3AudioEngine(app)
@@ -54,7 +54,7 @@ fun createAndroidAppGraph(context: Context): AppGraph {
         capability = Media3Capability(),
         store = store,
         storage = storage,
-        settings = settings,
+        settings = settingsRepo,
         idGenerator = RandomIdGenerator(),
         clock = clock,
         scope = scope,
@@ -68,6 +68,7 @@ fun createAndroidAppGraph(context: Context): AppGraph {
         override val library: LibraryRepository = libraryRepo
         override val indexer: LibraryIndexer = libraryIndexer
         override val artwork = artworkRepo
+        override val settings = settingsRepo
 
         override suspend fun importTree(treeUri: String, displayName: String) {
             val log = Log.withTag("Import")

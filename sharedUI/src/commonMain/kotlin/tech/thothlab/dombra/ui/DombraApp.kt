@@ -14,8 +14,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import tech.thothlab.dombra.di.AppGraph
+import tech.thothlab.dombra.domain.model.AppSettings
 import tech.thothlab.dombra.domain.model.Track
 import tech.thothlab.dombra.presentation.player.PlayerState
 import tech.thothlab.dombra.theme.AppTheme
@@ -43,14 +48,21 @@ fun DombraApp(
     graph: AppGraph,
     onPickFolder: (() -> Unit)? = null,
     onThemeChanged: @Composable (isDark: Boolean) -> Unit = {},
-) = AppTheme(onThemeChanged) {
+) {
+    val appSettings by graph.settings.settings.collectAsState(initial = AppSettings())
+    AppTheme(onThemeChanged, accent = appSettings.accentColor, themeMode = appSettings.theme) {
     val tracks: List<Track> by graph.library.tracks().collectAsState(initial = emptyList())
     val scanning: Boolean by graph.indexer.isScanning.collectAsState(initial = false)
     val player: PlayerState by graph.playback.state.collectAsState()
 
     var showPlayer by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
     if (showPlayer && player.currentTrack != null) {
         PlayerScreen(graph, onBack = { showPlayer = false })
+        return@AppTheme
+    }
+    if (showSettings) {
+        SettingsScreen(graph, appSettings, onBack = { showSettings = false })
         return@AppTheme
     }
 
@@ -69,8 +81,13 @@ fun DombraApp(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text("Dombra", style = MaterialTheme.typography.headlineSmall)
-            if (onPickFolder != null) {
-                Button(onClick = onPickFolder, enabled = !scanning) { Text("Выбрать папку") }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (onPickFolder != null) {
+                    Button(onClick = onPickFolder, enabled = !scanning) { Text("Выбрать папку") }
+                }
+                IconButton(onClick = { showSettings = true }) {
+                    Icon(Icons.Filled.Settings, contentDescription = "настройки")
+                }
             }
         }
 
@@ -121,6 +138,7 @@ fun DombraApp(
                 )
             }
         }
+    }
     }
     }
 }
