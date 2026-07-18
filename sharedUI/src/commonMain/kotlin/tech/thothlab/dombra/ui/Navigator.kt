@@ -15,6 +15,13 @@ sealed interface Screen {
     data class Tracks(val title: String, val ref: TrackListRef) : Screen
 
     data object Search : Screen
+
+    /** Экран удалённого источника (Subsonic/Navidrome): подключение или просмотр. */
+    data object Server : Screen
+
+    /** Треки удалённого альбома. */
+    data class RemoteAlbum(val albumId: String, val title: String) : Screen
+
     data object Player : Screen
     data object Settings : Screen
 }

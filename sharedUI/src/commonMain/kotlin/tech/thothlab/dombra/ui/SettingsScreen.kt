@@ -11,19 +11,26 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,8 +46,9 @@ import tech.thothlab.dombra.theme.toColor
 /** Настройки: выбор accent-цвета (палитра Cosmos) и темы. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun SettingsScreen(graph: AppGraph, settings: AppSettings, onBack: () -> Unit) {
+fun SettingsScreen(graph: AppGraph, settings: AppSettings, onBack: () -> Unit, onOpenServer: () -> Unit) {
     val scope = rememberCoroutineScope()
+    val remoteConfig by graph.remote.config.collectAsState()
 
     Box(Modifier.fillMaxSize()) {
         CosmosBackground(CosmosScreen.Secondary)
@@ -88,6 +96,30 @@ fun SettingsScreen(graph: AppGraph, settings: AppSettings, onBack: () -> Unit) {
                             )
                             .clickable { scope.launch { graph.settings.update { it.copy(accentColor = ac) } } },
                     )
+                }
+            }
+
+            Text("Источники", style = MaterialTheme.typography.titleMedium)
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
+                modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenServer),
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Icon(Icons.Filled.Dns, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Column(Modifier.weight(1f)) {
+                        Text("Сервер (Navidrome / Subsonic)", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            remoteConfig?.let { "Подключён: ${it.label}" } ?: "Не подключён",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }

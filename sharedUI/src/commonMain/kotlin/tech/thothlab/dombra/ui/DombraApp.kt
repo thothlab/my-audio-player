@@ -116,6 +116,19 @@ private fun MainShell(
             onOpenAlbum = { nav.push(Screen.Tracks(it.title, TrackListRef.Album(it.id))) },
         )
 
+        Screen.Server -> ServerScreen(
+            graph = graph,
+            onBack = { nav.pop() },
+            onOpenAlbum = { id, title -> nav.push(Screen.RemoteAlbum(id, title)) },
+        )
+
+        is Screen.RemoteAlbum -> RemoteAlbumScreen(
+            graph = graph,
+            albumId = screen.albumId,
+            title = screen.title,
+            onBack = { nav.pop() },
+        )
+
         Screen.Player -> {
             if (player.currentTrack != null) {
                 PlayerScreen(graph, onBack = { nav.pop() })
@@ -125,6 +138,10 @@ private fun MainShell(
             }
         }
 
-        Screen.Settings -> SettingsScreen(graph, settings, onBack = { nav.pop() })
+        Screen.Settings -> SettingsScreen(
+            graph, settings,
+            onBack = { nav.pop() },
+            onOpenServer = { nav.push(Screen.Server) },
+        )
     }
 }

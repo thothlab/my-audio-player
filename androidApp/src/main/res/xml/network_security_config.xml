@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 10 не содержит ISRG Root X2 (ECDSA Let's Encrypt) в системном trust store.
+     Добавляем корни ISRG X1/X2 к системным, чтобы доверять современным LE-сертификатам
+     (например Navidrome-серверов). Это добавление недостающих корней, не отключение проверки. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system"/>
+            <certificates src="@raw/isrg_root_x1"/>
+            <certificates src="@raw/isrg_root_x2"/>
+        </trust-anchors>
+    </base-config>
+</network-security-config>
