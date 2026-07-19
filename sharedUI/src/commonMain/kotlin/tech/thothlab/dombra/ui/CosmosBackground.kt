@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import tech.thothlab.dombra.theme.AuroraPurple
 import tech.thothlab.dombra.theme.LocalAccentColor
 
 /**
@@ -28,49 +29,28 @@ fun CosmosBackground(
     Canvas(modifier) {
         val w = size.width
         val h = size.height
+
+        fun glow(color: Color, alpha: Float, cx: Float, cy: Float, r: Float) = drawRect(
+            Brush.radialGradient(
+                colors = listOf(color.copy(alpha = alpha), Color.Transparent),
+                center = Offset(cx, cy),
+                radius = r,
+            ),
+        )
+
         when (screen) {
             CosmosScreen.Player -> {
-                // Радиальный акцент справа-сверху + нижнее свечение (subtleRadial).
-                drawRect(
-                    Brush.radialGradient(
-                        colors = listOf(accent.copy(alpha = 0.24f), Color.Transparent),
-                        center = Offset(w * 0.82f, h * 0.14f),
-                        radius = w * 0.75f,
-                    ),
-                )
-                drawRect(
-                    Brush.radialGradient(
-                        colors = listOf(accent.copy(alpha = 0.10f), Color.Transparent),
-                        center = Offset(w * 0.15f, h * 0.85f),
-                        radius = w * 0.7f,
-                    ),
-                )
+                // Aurora: accent-глоу справа-сверху + фиолетовый снизу-слева.
+                glow(accent, 0.30f, w * 0.84f, h * 0.12f, w * 0.85f)
+                glow(AuroraPurple, 0.18f, w * 0.12f, h * 0.86f, w * 0.8f)
             }
             CosmosScreen.Library -> {
-                // Гало из верхнего-левого угла.
-                drawRect(
-                    Brush.radialGradient(
-                        colors = listOf(accent.copy(alpha = 0.20f), Color.Transparent),
-                        center = Offset(0f, 0f),
-                        radius = maxOf(w, h) * 0.85f,
-                    ),
-                )
-                drawRect(
-                    Brush.radialGradient(
-                        colors = listOf(accent.copy(alpha = 0.08f), Color.Transparent),
-                        center = Offset(w, h),
-                        radius = maxOf(w, h) * 0.6f,
-                    ),
-                )
+                glow(accent, 0.24f, w * 0.05f, 0f, maxOf(w, h) * 0.9f)
+                glow(AuroraPurple, 0.14f, w, h * 0.95f, maxOf(w, h) * 0.7f)
             }
             CosmosScreen.Secondary -> {
-                drawRect(
-                    Brush.radialGradient(
-                        colors = listOf(accent.copy(alpha = 0.18f), Color.Transparent),
-                        center = Offset(w, 0f),
-                        radius = maxOf(w, h) * 0.85f,
-                    ),
-                )
+                glow(accent, 0.22f, w, 0f, maxOf(w, h) * 0.9f)
+                glow(AuroraPurple, 0.12f, 0f, h, maxOf(w, h) * 0.7f)
             }
         }
     }

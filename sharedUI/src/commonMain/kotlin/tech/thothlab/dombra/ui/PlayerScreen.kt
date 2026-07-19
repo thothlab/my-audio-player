@@ -81,6 +81,8 @@ import tech.thothlab.dombra.di.AppGraph
 import tech.thothlab.dombra.domain.model.RepeatMode
 import tech.thothlab.dombra.domain.model.Track
 import tech.thothlab.dombra.presentation.player.PlayerState
+import tech.thothlab.dombra.theme.GlassBorder
+import tech.thothlab.dombra.theme.GlassDark
 import tech.thothlab.dombra.theme.LocalAccentColor
 
 /**
@@ -375,9 +377,9 @@ private fun ControlsBar(
 ) {
     val onSurface = MaterialTheme.colorScheme.onSurface
     Surface(
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
+        color = GlassDark,
         shape = RoundedCornerShape(28.dp),
-        border = BorderStroke(1.dp, onSurface.copy(alpha = 0.10f)),
+        border = BorderStroke(1.dp, GlassBorder),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(

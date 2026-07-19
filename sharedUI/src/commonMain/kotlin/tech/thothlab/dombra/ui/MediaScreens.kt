@@ -51,6 +51,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
@@ -69,6 +70,10 @@ import tech.thothlab.dombra.domain.model.SortOrder
 import tech.thothlab.dombra.domain.model.Track
 import tech.thothlab.dombra.domain.model.sortedByOrder
 import tech.thothlab.dombra.presentation.player.PlayerState
+import tech.thothlab.dombra.theme.GlassBorder
+import tech.thothlab.dombra.theme.GlassFill
+import tech.thothlab.dombra.theme.GlassFillStrong
+import tech.thothlab.dombra.theme.iconTileBrush
 
 /** Метаданные раздела «Медиатеки» — иконка, цвет плитки, заголовок и подпись (по образцу Cosmos). */
 private data class SectionMeta(
@@ -165,9 +170,8 @@ private fun SectionCard(meta: SectionMeta, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)),
-        tonalElevation = 2.dp,
+        color = GlassFill,
+        border = BorderStroke(1.dp, GlassBorder),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
@@ -190,13 +194,17 @@ private fun SectionCard(meta: SectionMeta, onClick: () -> Unit) {
     }
 }
 
-/** Цветная скруглённая плитка-иконка в стиле карточек «Медиатеки». */
+/** Градиентная скруглённая плитка-иконка (Aurora Glass: цвет секции → фиолетовый, белая иконка). */
 @Composable
 internal fun IconTile(icon: ImageVector, color: Color, size: Dp = 48.dp, iconSize: Dp = 24.dp) {
-    Surface(shape = RoundedCornerShape(14.dp), color = color.copy(alpha = 0.20f), modifier = Modifier.size(size)) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = color, modifier = Modifier.size(iconSize))
-        }
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(RoundedCornerShape(14.dp))
+            .background(iconTileBrush(color)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, null, tint = Color.White, modifier = Modifier.size(iconSize))
     }
 }
 
@@ -217,9 +225,8 @@ private fun MediaGroupCard(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)),
-        tonalElevation = 2.dp,
+        color = GlassFill,
+        border = BorderStroke(1.dp, GlassBorder),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {

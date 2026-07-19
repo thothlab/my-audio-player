@@ -39,6 +39,8 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import tech.thothlab.dombra.di.AppGraph
+import tech.thothlab.dombra.theme.GlassBorder
+import tech.thothlab.dombra.theme.GlassDark
 import tech.thothlab.dombra.domain.model.Track
 import tech.thothlab.dombra.presentation.player.PlayerState
 
@@ -89,8 +91,8 @@ fun MiniPlayer(
                 detectTapGestures { onExpand() }
             },
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
+        color = GlassDark,
+        border = BorderStroke(1.dp, GlassBorder),
         shadowElevation = 4.dp,
     ) {
         Row(

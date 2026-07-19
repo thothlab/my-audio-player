@@ -173,8 +173,9 @@ data class EqSettings(
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
-/** Accent-палитра — перенесена из Cosmos (`BackgroundColor`, hex RGB). Дефолт — violet. */
+/** Accent-палитра. Дефолт — Aurora (розовый, направление Aurora Glass). */
 enum class AccentColor(val hex: String, val label: String) {
+    AURORA("ff4f8b", "Aurora"),
     VIOLET("b11491", "Violet"),
     RED("e74c3c", "Red"),
     BLUE("3498db", "Blue"),
@@ -204,8 +205,8 @@ data class HomeSection(
 @Serializable
 data class AppSettings(
     val language: AppLanguage = AppLanguage.SYSTEM,
-    val theme: ThemeMode = ThemeMode.SYSTEM,
-    val accentColor: AccentColor = AccentColor.VIOLET,
+    val theme: ThemeMode = ThemeMode.DARK,
+    val accentColor: AccentColor = AccentColor.AURORA,
     val homeSections: List<HomeSection> = HomeSectionId.entries.map { HomeSection(it) },
     val deletionPolicy: DeletionPolicy = DeletionPolicy.LIBRARY_ONLY,
     val dsdMode: DsdMode = DsdMode.PCM,
