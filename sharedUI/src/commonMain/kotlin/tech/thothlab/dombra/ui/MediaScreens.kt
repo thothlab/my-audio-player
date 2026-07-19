@@ -124,10 +124,13 @@ fun MediaHomeScreen(
                     style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.padding(start = 12.dp).weight(1f),
                 )
-                if (refreshing) {
-                    CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
-                } else {
-                    IconButton(onClick = onRefresh) { Icon(Icons.Filled.Refresh, "обновить") }
+                // Прогресс обновления — ровно на месте иконки «Обновить» (тот же 48dp-слот).
+                Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                    if (refreshing) {
+                        CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
+                    } else {
+                        IconButton(onClick = onRefresh) { Icon(Icons.Filled.Refresh, "обновить") }
+                    }
                 }
                 IconButton(onClick = onSearch) { Icon(Icons.Filled.Search, "поиск") }
                 IconButton(onClick = onOpenSettings) { Icon(Icons.Filled.Settings, "настройки") }
