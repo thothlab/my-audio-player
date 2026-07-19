@@ -159,24 +159,27 @@ private fun ServerBrowse(graph: AppGraph, onOpenAlbum: (String, String) -> Unit)
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             items(albums, key = { it.id }) { al ->
-                AlbumRow(al) { onOpenAlbum(al.id, al.name) }
+                AlbumRow(al, graph.remote.coverArtUrl(al.coverArt, 128), graph) { onOpenAlbum(al.id, al.name) }
             }
         }
     }
 }
 
 @Composable
-private fun AlbumRow(album: SubAlbum, onClick: () -> Unit) {
+private fun AlbumRow(album: SubAlbum, coverUrl: String?, graph: AppGraph, onClick: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 8.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.size(48.dp)) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(Icons.Filled.Album, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
-            }
-        }
+        ArtworkImage(
+            artwork = graph.artwork,
+            stableId = null,
+            remoteUrl = coverUrl,
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.size(48.dp),
+            iconScale = 0.5f,
+        )
         Column(Modifier.weight(1f)) {
             Text(album.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(

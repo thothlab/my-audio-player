@@ -19,8 +19,8 @@ import coil3.compose.AsyncImage
 import tech.thothlab.dombra.domain.ports.ArtworkRepository
 
 /**
- * Обложка трека из файлового кэша `ArtworkRepository` (наполняется индексатором).
- * Fallback — иконка ноты. Загрузка байтов асинхронна, декод — Coil.
+ * Обложка трека из файлового кэша `ArtworkRepository` (наполняется индексатором), либо
+ * по удалённому URL (`remoteUrl` — Subsonic getCoverArt). Fallback — иконка ноты.
  */
 @Composable
 fun ArtworkImage(
@@ -29,9 +29,11 @@ fun ArtworkImage(
     shape: Shape,
     modifier: Modifier = Modifier,
     iconScale: Float = 0.3f,
+    remoteUrl: String? = null,
 ) {
-    val bytes: ByteArray? by produceState<ByteArray?>(null, stableId) {
-        value = stableId?.let { runCatching { artwork.load(it) }.getOrNull() }
+    val bytes: ByteArray? by produceState<ByteArray?>(null, stableId, remoteUrl) {
+        value = if (remoteUrl != null) null
+        else stableId?.let { runCatching { artwork.load(it) }.getOrNull() }
     }
     Box(
         modifier
@@ -40,7 +42,14 @@ fun ArtworkImage(
         contentAlignment = Alignment.Center,
     ) {
         val b = bytes
-        if (b != null) {
+        if (remoteUrl != null) {
+            AsyncImage(
+                model = remoteUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+        } else if (b != null) {
             AsyncImage(
                 model = b,
                 contentDescription = null,
