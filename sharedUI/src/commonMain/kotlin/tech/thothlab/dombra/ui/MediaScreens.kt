@@ -127,7 +127,7 @@ fun MediaHomeScreen(
                 // Прогресс обновления — ровно на месте иконки «Обновить» (тот же 48dp-слот).
                 Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                     if (refreshing) {
-                        CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                     } else {
                         IconButton(onClick = onRefresh) { Icon(Icons.Filled.Refresh, "обновить") }
                     }
