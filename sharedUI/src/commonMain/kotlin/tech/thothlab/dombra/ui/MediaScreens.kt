@@ -42,10 +42,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -236,11 +236,19 @@ private fun MediaGroupCard(
     }
 }
 
+/** Кэш «альбом → stableId первого трека» — чтобы список альбомов не перечитывал обложку при скролле. */
+private val albumCoverIdCache = HashMap<String, String?>()
+
 /** Карточка альбома: обложка из артворка первого трека, иначе стилизованная плитка-диск. */
 @Composable
 private fun AlbumGroupCard(graph: AppGraph, album: Album, onClick: () -> Unit) {
-    val coverId by produceState<String?>(null, album.id) {
-        value = runCatching { graph.library.albumTracks(album.id).first().firstOrNull()?.stableId }.getOrNull()
+    var coverId by remember(album.id) { mutableStateOf(albumCoverIdCache[album.id]) }
+    LaunchedEffect(album.id) {
+        if (!albumCoverIdCache.containsKey(album.id)) {
+            val id = runCatching { graph.library.albumTracks(album.id).first().firstOrNull()?.stableId }.getOrNull()
+            albumCoverIdCache[album.id] = id
+            coverId = id
+        }
     }
     MediaGroupCard(album.title, Icons.Filled.Album, AlbumTileColor, onClick) {
         if (coverId != null) {

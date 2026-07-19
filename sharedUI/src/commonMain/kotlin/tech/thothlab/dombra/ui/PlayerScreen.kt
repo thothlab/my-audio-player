@@ -51,6 +51,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,7 +60,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -71,8 +71,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.util.lerp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import tech.thothlab.dombra.di.AppGraph
@@ -95,8 +97,24 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
 
     var scrub by remember { mutableStateOf<Float?>(null) }
     val artDrag = remember { Animatable(0f) }
+    var carouselStep by remember { mutableStateOf(0f) }
     var showPlaylistSheet by remember { mutableStateOf(false) }
     val dur = (state.durationMs ?: 0L).toFloat()
+
+    // Смена трека кнопками «вперёд/назад» — с тем же плавным слайдом карусели, что и свайп.
+    val skipTo: (Boolean) -> Unit = { forward ->
+        val hasNeighbor =
+            if (forward) state.currentIndex + 1 <= state.queue.lastIndex else state.currentIndex - 1 >= 0
+        scope.launch {
+            if (hasNeighbor && carouselStep > 1f) {
+                artDrag.animateTo(if (forward) -carouselStep else carouselStep, tween(220))
+                if (forward) graph.playback.next() else graph.playback.previous()
+                artDrag.snapTo(0f)
+            } else {
+                if (forward) graph.playback.next() else graph.playback.previous()
+            }
+        }
+    }
     val fraction = (scrub ?: if (dur > 0f) state.positionMs.toFloat() / dur else 0f).coerceIn(0f, 1f)
 
     Box(Modifier.fillMaxSize()) {
@@ -129,10 +147,11 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
                 contentAlignment = Alignment.Center,
             ) {
                 val cardW = maxWidth * 0.80f
-                val stepPx = with(LocalDensity.current) { (cardW + 14.dp).toPx() }
-                if (prevId != null) CarouselCard(graph, prevId, -1, cardW, stepPx, artDrag.value, current = false)
-                if (nextId != null) CarouselCard(graph, nextId, 1, cardW, stepPx, artDrag.value, current = false)
-                CarouselCard(graph, track?.stableId, 0, cardW, stepPx, artDrag.value, current = true)
+                val stepPx = with(LocalDensity.current) { (cardW + 18.dp).toPx() }
+                SideEffect { carouselStep = stepPx }
+                if (prevId != null) CarouselCard(graph, prevId, -1, cardW, stepPx, artDrag.value)
+                if (nextId != null) CarouselCard(graph, nextId, 1, cardW, stepPx, artDrag.value)
+                CarouselCard(graph, track?.stableId, 0, cardW, stepPx, artDrag.value)
 
                 // Жест поверх: следует за пальцем, на смену трека — плавный слайд на позицию соседа.
                 Box(
@@ -226,7 +245,14 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
 
             Spacer(Modifier.height(20.dp))
 
-            ControlsBar(graph = graph, state = state, accent = accent, enabled = track != null)
+            ControlsBar(
+                graph = graph,
+                state = state,
+                accent = accent,
+                enabled = track != null,
+                onSkipPrevious = { skipTo(false) },
+                onSkipNext = { skipTo(true) },
+            )
 
             state.error?.let { err ->
                 Spacer(Modifier.height(12.dp))
@@ -242,7 +268,10 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
     }
 }
 
-/** Обложка в карусели: центральная в фокусе (тень), соседние — приглушены (α) и сдвинуты. */
+/**
+ * Обложка в карусели: масштаб/тень/α зависят от расстояния до центра (t=0 центр … t=1 сосед),
+ * поэтому при свайпе/смене трека соседняя обложка плавно «накатывает» (увеличивается), центральная — уменьшается.
+ */
 @Composable
 private fun CarouselCard(
     graph: AppGraph,
@@ -251,8 +280,10 @@ private fun CarouselCard(
     cardWidth: Dp,
     stepPx: Float,
     dragPx: Float,
-    current: Boolean,
 ) {
+    val pos = slot * stepPx + dragPx
+    val t = if (stepPx > 1f) (abs(pos) / stepPx).coerceIn(0f, 1f) else if (slot == 0) 0f else 1f
+    val scale = lerp(1f, 0.82f, t)
     ArtworkImage(
         artwork = graph.artwork,
         stableId = stableId,
@@ -260,11 +291,14 @@ private fun CarouselCard(
         modifier = Modifier
             .width(cardWidth)
             .aspectRatio(1f)
-            .offset { IntOffset((slot * stepPx + dragPx).roundToInt(), 0) }
-            .then(
-                if (current) Modifier.shadow(12.dp, RoundedCornerShape(12.dp))
-                else Modifier.graphicsLayer { alpha = 0.5f },
-            ),
+            .offset { IntOffset(pos.roundToInt(), 0) }
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                alpha = lerp(1f, 0.5f, t)
+                shadowElevation = 12.dp.toPx() * (1f - t)
+                shape = RoundedCornerShape(12.dp)
+            },
         iconScale = 0.22f,
     )
 }
@@ -331,7 +365,14 @@ private fun AddToPlaylistSheet(graph: AppGraph, track: Track, onDismiss: () -> U
 }
 
 @Composable
-private fun ControlsBar(graph: AppGraph, state: PlayerState, accent: Color, enabled: Boolean) {
+private fun ControlsBar(
+    graph: AppGraph,
+    state: PlayerState,
+    accent: Color,
+    enabled: Boolean,
+    onSkipPrevious: () -> Unit,
+    onSkipNext: () -> Unit,
+) {
     val onSurface = MaterialTheme.colorScheme.onSurface
     Surface(
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
@@ -351,7 +392,7 @@ private fun ControlsBar(graph: AppGraph, state: PlayerState, accent: Color, enab
                     tint = if (state.shuffled) accent else onSurface,
                 )
             }
-            IconButton(onClick = { graph.playback.previous() }, enabled = enabled) {
+            IconButton(onClick = onSkipPrevious, enabled = enabled) {
                 Icon(Icons.Filled.SkipPrevious, contentDescription = "предыдущий", tint = onSurface, modifier = Modifier.size(32.dp))
             }
             IconButton(
@@ -366,7 +407,7 @@ private fun ControlsBar(graph: AppGraph, state: PlayerState, accent: Color, enab
                     modifier = Modifier.size(44.dp),
                 )
             }
-            IconButton(onClick = { graph.playback.next() }, enabled = enabled) {
+            IconButton(onClick = onSkipNext, enabled = enabled) {
                 Icon(Icons.Filled.SkipNext, contentDescription = "следующий", tint = onSurface, modifier = Modifier.size(32.dp))
             }
             IconButton(onClick = { graph.playback.cycleRepeatMode() }) {
