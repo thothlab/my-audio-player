@@ -1,5 +1,8 @@
 package tech.thothlab.dombra.ui
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
@@ -91,7 +94,7 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
 
     var scrub by remember { mutableStateOf<Float?>(null) }
-    var artDrag by remember { mutableStateOf(0f) }
+    val artDrag = remember { Animatable(0f) }
     var showPlaylistSheet by remember { mutableStateOf(false) }
     val dur = (state.durationMs ?: 0L).toFloat()
     val fraction = (scrub ?: if (dur > 0f) state.positionMs.toFloat() / dur else 0f).coerceIn(0f, 1f)
@@ -122,28 +125,43 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
             val prevId = state.queue.getOrNull(state.currentIndex - 1)?.track?.stableId
             val nextId = state.queue.getOrNull(state.currentIndex + 1)?.track?.stableId
             BoxWithConstraints(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .pointerInput(track?.stableId) {
-                        detectHorizontalDragGestures(
-                            onDragEnd = {
-                                when {
-                                    artDrag <= -SWIPE_THRESHOLD -> graph.playback.next()
-                                    artDrag >= SWIPE_THRESHOLD -> graph.playback.previous()
-                                }
-                                artDrag = 0f
-                            },
-                            onDragCancel = { artDrag = 0f },
-                        ) { _, delta -> artDrag += delta }
-                    },
+                modifier = Modifier.fillMaxWidth().aspectRatio(1f),
                 contentAlignment = Alignment.Center,
             ) {
                 val cardW = maxWidth * 0.80f
                 val stepPx = with(LocalDensity.current) { (cardW + 14.dp).toPx() }
-                if (prevId != null) CarouselCard(graph, prevId, -1, cardW, stepPx, artDrag, current = false)
-                if (nextId != null) CarouselCard(graph, nextId, 1, cardW, stepPx, artDrag, current = false)
-                CarouselCard(graph, track?.stableId, 0, cardW, stepPx, artDrag, current = true)
+                if (prevId != null) CarouselCard(graph, prevId, -1, cardW, stepPx, artDrag.value, current = false)
+                if (nextId != null) CarouselCard(graph, nextId, 1, cardW, stepPx, artDrag.value, current = false)
+                CarouselCard(graph, track?.stableId, 0, cardW, stepPx, artDrag.value, current = true)
+
+                // Жест поверх: следует за пальцем, на смену трека — плавный слайд на позицию соседа.
+                Box(
+                    Modifier.matchParentSize().pointerInput(track?.stableId) {
+                        detectHorizontalDragGestures(
+                            onDragEnd = {
+                                scope.launch {
+                                    when {
+                                        artDrag.value <= -SWIPE_THRESHOLD && nextId != null -> {
+                                            artDrag.animateTo(-stepPx, tween(180))
+                                            graph.playback.next()
+                                            artDrag.snapTo(0f)
+                                        }
+                                        artDrag.value >= SWIPE_THRESHOLD && prevId != null -> {
+                                            artDrag.animateTo(stepPx, tween(180))
+                                            graph.playback.previous()
+                                            artDrag.snapTo(0f)
+                                        }
+                                        else -> artDrag.animateTo(0f, spring())
+                                    }
+                                }
+                            },
+                            onDragCancel = { scope.launch { artDrag.animateTo(0f, spring()) } },
+                        ) { change, delta ->
+                            change.consume()
+                            scope.launch { artDrag.snapTo(artDrag.value + delta) }
+                        }
+                    },
+                )
             }
 
             Spacer(Modifier.height(24.dp))

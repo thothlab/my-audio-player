@@ -251,6 +251,22 @@ class PlaybackController(
         persistSnapshot()
     }
 
+    /** Полностью убрать «сейчас играет»: стоп + очистка очереди (currentTrack → null). */
+    fun clear() {
+        prepareJob?.cancel()
+        engine.stop()
+        originalOrder = emptyList()
+        _state.value = _state.value.copy(
+            queue = emptyList(),
+            currentIndex = -1,
+            isPlaying = false,
+            positionMs = 0L,
+            durationMs = null,
+            error = null,
+        )
+        persistSnapshot()
+    }
+
     fun stop() {
         prepareJob?.cancel()
         engine.stop()

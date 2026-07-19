@@ -45,6 +45,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -53,8 +54,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import tech.thothlab.dombra.di.AppGraph
@@ -157,21 +160,18 @@ fun MediaHomeScreen(
 @Composable
 private fun SectionCard(meta: SectionMeta, onClick: () -> Unit) {
     Surface(
+        onClick = onClick,
         shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)),
         tonalElevation = 2.dp,
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
             modifier = Modifier.padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Surface(shape = RoundedCornerShape(14.dp), color = meta.color.copy(alpha = 0.22f), modifier = Modifier.size(54.dp)) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(meta.icon, null, tint = meta.color, modifier = Modifier.size(28.dp))
-                }
-            }
+            IconTile(meta.icon, meta.color, size = 54.dp, iconSize = 28.dp)
             Column(modifier = Modifier.padding(start = 14.dp).weight(1f)) {
                 Text(meta.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
@@ -183,6 +183,73 @@ private fun SectionCard(meta: SectionMeta, onClick: () -> Unit) {
                 )
             }
             Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** Цветная скруглённая плитка-иконка в стиле карточек «Медиатеки». */
+@Composable
+internal fun IconTile(icon: ImageVector, color: Color, size: Dp = 48.dp, iconSize: Dp = 24.dp) {
+    Surface(shape = RoundedCornerShape(14.dp), color = color.copy(alpha = 0.20f), modifier = Modifier.size(size)) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = color, modifier = Modifier.size(iconSize))
+        }
+    }
+}
+
+/** Цвета плиток разделов (для карточек списков групп). */
+internal val ArtistTileColor = Color(0xFFB07CE8)
+internal val AlbumTileColor = Color(0xFFEEA95C)
+internal val PlaylistTileColor = Color(0xFF63C67F)
+
+/** Карточка группы в списках (плейлист/исполнитель/альбом) — в стиле «Медиатеки». */
+@Composable
+private fun MediaGroupCard(
+    title: String,
+    icon: ImageVector,
+    iconColor: Color,
+    onClick: () -> Unit,
+    cover: @Composable (() -> Unit)? = null,
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)),
+        tonalElevation = 2.dp,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (cover != null) cover() else IconTile(icon, iconColor, size = 48.dp, iconSize = 24.dp)
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = 12.dp).weight(1f),
+            )
+            Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** Карточка альбома: обложка из артворка первого трека, иначе стилизованная плитка-диск. */
+@Composable
+private fun AlbumGroupCard(graph: AppGraph, album: Album, onClick: () -> Unit) {
+    val coverId by produceState<String?>(null, album.id) {
+        value = runCatching { graph.library.albumTracks(album.id).first().firstOrNull()?.stableId }.getOrNull()
+    }
+    MediaGroupCard(album.title, Icons.Filled.Album, AlbumTileColor, onClick) {
+        if (coverId != null) {
+            ArtworkImage(
+                artwork = graph.artwork,
+                stableId = coverId,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.size(48.dp),
+                iconScale = 0.5f,
+            )
+        } else {
+            IconTile(Icons.Filled.Album, AlbumTileColor)
         }
     }
 }
@@ -210,9 +277,10 @@ fun CollectionScreen(
             val artists by graph.library.artists().collectAsState(initial = emptyList())
             GroupListScreen("Исполнители", player, onBack, onOpenPlayer, graph) {
                 items(artists, key = { it.id }) { a: Artist ->
-                    GroupRow(a.name, Icons.Filled.Group) {
-                        onOpenGroup(Screen.Tracks(a.name, TrackListRef.Artist(a.id)))
-                    }
+                    MediaGroupCard(
+                        a.name, Icons.Filled.Group, ArtistTileColor,
+                        onClick = { onOpenGroup(Screen.Tracks(a.name, TrackListRef.Artist(a.id))) },
+                    )
                 }
             }
         }
@@ -220,7 +288,7 @@ fun CollectionScreen(
             val albums by graph.library.albums().collectAsState(initial = emptyList())
             GroupListScreen("Альбомы", player, onBack, onOpenPlayer, graph) {
                 items(albums, key = { it.id }) { al: Album ->
-                    GroupRow(al.title, Icons.Filled.Album) {
+                    AlbumGroupCard(graph, al) {
                         onOpenGroup(Screen.Tracks(al.title, TrackListRef.Album(al.id)))
                     }
                 }
@@ -230,9 +298,10 @@ fun CollectionScreen(
             val playlists by graph.playlists.playlists().collectAsState(initial = emptyList())
             GroupListScreen("Плейлисты", player, onBack, onOpenPlayer, graph) {
                 items(playlists, key = { it.id }) { pl: Playlist ->
-                    GroupRow(pl.title, Icons.AutoMirrored.Filled.QueueMusic) {
-                        onOpenGroup(Screen.Tracks(pl.title, TrackListRef.Playlist(pl.id)))
-                    }
+                    MediaGroupCard(
+                        pl.title, Icons.AutoMirrored.Filled.QueueMusic, PlaylistTileColor,
+                        onClick = { onOpenGroup(Screen.Tracks(pl.title, TrackListRef.Playlist(pl.id))) },
+                    )
                 }
             }
         }
@@ -400,8 +469,8 @@ private fun GroupListScreen(
             CollectionHeader(title, onBack)
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-                contentPadding = PaddingValues(bottom = if (player.currentTrack != null) 92.dp else 8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                contentPadding = PaddingValues(top = 4.dp, bottom = if (player.currentTrack != null) 92.dp else 8.dp),
                 content = content,
             )
         }
@@ -425,28 +494,6 @@ private fun CollectionHeader(title: String, onBack: () -> Unit) {
     ) {
         IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "назад") }
         Text(title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(start = 4.dp))
-    }
-}
-
-@Composable
-private fun GroupRow(title: String, icon: ImageVector, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 10.dp, horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), modifier = Modifier.size(44.dp)) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
-            }
-        }
-        Text(
-            title,
-            style = MaterialTheme.typography.bodyLarge,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(start = 12.dp).weight(1f),
-        )
-        Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

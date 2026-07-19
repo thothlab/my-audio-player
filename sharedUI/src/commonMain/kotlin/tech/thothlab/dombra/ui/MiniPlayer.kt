@@ -1,12 +1,17 @@
 package tech.thothlab.dombra.ui
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,17 +25,28 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import kotlin.math.abs
+import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 import tech.thothlab.dombra.di.AppGraph
 import tech.thothlab.dombra.domain.model.Track
 import tech.thothlab.dombra.presentation.player.PlayerState
 
+private const val DISMISS_THRESHOLD = 200f
+
 /**
- * Нижний мини-плеер в стиле Cosmos: матовый скруглённый бар с миниатюрой обложки,
- * названием/исполнителем и play/pause + next. Тап по бару (кроме кнопок) → полный плеер.
+ * Нижний мини-плеер (Cosmos): матовый бар с обложкой, названием, play/pause + next.
+ * Тап → полный плеер. Смахивание влево/вправо убирает бар и **останавливает** воспроизведение.
  */
 @Composable
 fun MiniPlayer(
@@ -40,17 +56,45 @@ fun MiniPlayer(
     modifier: Modifier = Modifier,
 ) {
     val track: Track = player.currentTrack ?: return
+    val scope = rememberCoroutineScope()
+    val offsetX = remember { Animatable(0f) }
+    // Новый трек → вернуть бар в центр (сбросить остаточный сдвиг).
+    LaunchedEffect(track.stableId) { offsetX.snapTo(0f) }
+
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+            .graphicsLayer { alpha = (1f - abs(offsetX.value) / 700f).coerceIn(0.15f, 1f) }
+            .pointerInput(track.stableId) {
+                detectHorizontalDragGestures(
+                    onDragEnd = {
+                        scope.launch {
+                            if (abs(offsetX.value) > DISMISS_THRESHOLD) {
+                                val target = if (offsetX.value > 0) 1400f else -1400f
+                                offsetX.animateTo(target, tween(180))
+                                graph.playback.clear() // смахнули → стоп + убрать «сейчас играет»
+                            } else {
+                                offsetX.animateTo(0f, spring())
+                            }
+                        }
+                    },
+                    onDragCancel = { scope.launch { offsetX.animateTo(0f, spring()) } },
+                ) { change, delta ->
+                    change.consume()
+                    scope.launch { offsetX.snapTo(offsetX.value + delta) }
+                }
+            }
+            .pointerInput(Unit) {
+                detectTapGestures { onExpand() }
+            },
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)),
-        tonalElevation = 3.dp,
-        shadowElevation = 6.dp,
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
+        shadowElevation = 4.dp,
     ) {
         Row(
             modifier = Modifier
-                .clickable(onClick = onExpand)
                 .padding(horizontal = 10.dp, vertical = 8.dp)
                 .height(52.dp),
             verticalAlignment = Alignment.CenterVertically,

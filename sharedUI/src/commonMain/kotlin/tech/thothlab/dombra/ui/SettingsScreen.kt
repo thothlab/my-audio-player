@@ -1,5 +1,6 @@
 package tech.thothlab.dombra.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -35,6 +36,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import tech.thothlab.dombra.di.AppGraph
@@ -101,16 +103,19 @@ fun SettingsScreen(graph: AppGraph, settings: AppSettings, onBack: () -> Unit, o
 
             Text("Источники", style = MaterialTheme.typography.titleMedium)
             Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
-                modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenServer),
+                onClick = onOpenServer,
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.60f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)),
+                tonalElevation = 2.dp,
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Row(
-                    modifier = Modifier.padding(14.dp),
+                    modifier = Modifier.padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Icon(Icons.Filled.Dns, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    IconTile(Icons.Filled.Dns, Color(0xFF5B9BE8), size = 48.dp, iconSize = 24.dp)
                     Column(Modifier.weight(1f)) {
                         Text("Сервер (Navidrome / Subsonic)", style = MaterialTheme.typography.bodyLarge)
                         Text(
