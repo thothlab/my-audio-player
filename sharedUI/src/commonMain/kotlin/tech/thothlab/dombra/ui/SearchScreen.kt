@@ -1,5 +1,7 @@
 package tech.thothlab.dombra.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -15,39 +17,48 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Album
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.flow.flowOf
 import tech.thothlab.dombra.di.AppGraph
 import tech.thothlab.dombra.domain.model.Album
 import tech.thothlab.dombra.domain.model.Artist
 import tech.thothlab.dombra.domain.model.Track
+import tech.thothlab.dombra.theme.AuroraPurple
+import tech.thothlab.dombra.theme.LocalAccentColor
+import tech.thothlab.dombra.theme.auroraColors
 
 private enum class SearchScope(val label: String) { ALL("Все"), SONGS("Песни"), ARTISTS("Исполнители"), ALBUMS("Альбомы") }
 
-/** Экран поиска (PRD-03 T04): поле + фильтр-чипы областей + сгруппированные результаты. */
+private val ArtistGradient = Brush.linearGradient(listOf(Color(0xFF2DD4BF), Color(0xFF0E7490)))
+private val AlbumGradient = Brush.linearGradient(listOf(Color(0xFFF59E0B), Color(0xFFB45309)))
+
+/** Экран поиска (Aurora Glass): пилюля-поле + «Готово» + чипы-пилюли + сгруппированные результаты. */
 @Composable
 fun SearchScreen(
     graph: AppGraph,
@@ -59,6 +70,8 @@ fun SearchScreen(
     var query by remember { mutableStateOf("") }
     var scope by remember { mutableStateOf(SearchScope.ALL) }
     val q = query.trim()
+    val accent = LocalAccentColor.current
+    val c = auroraColors()
 
     val wantSongs = scope == SearchScope.ALL || scope == SearchScope.SONGS
     val wantArtists = scope == SearchScope.ALL || scope == SearchScope.ARTISTS
@@ -82,78 +95,98 @@ fun SearchScreen(
                 .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(horizontal = 16.dp),
         ) {
+            // Поле-пилюля + «Готово».
             Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "назад") }
-                Text("Поиск", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(start = 4.dp))
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(c.glassFillStrong)
+                        .border(1.dp, c.glassBorder, RoundedCornerShape(14.dp))
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(9.dp),
+                ) {
+                    Icon(Icons.Filled.Search, null, tint = c.textSecondary, modifier = Modifier.size(20.dp))
+                    Box(Modifier.weight(1f)) {
+                        if (query.isEmpty()) {
+                            Text(
+                                "Название, исполнитель, альбом",
+                                style = TextStyle(fontSize = 15.sp),
+                                color = c.textTertiary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        BasicTextField(
+                            value = query,
+                            onValueChange = { query = it },
+                            singleLine = true,
+                            textStyle = TextStyle(fontSize = 15.sp, color = c.textPrimary),
+                            cursorBrush = SolidColor(accent),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    if (query.isNotEmpty()) {
+                        Icon(
+                            Icons.Filled.Clear, "очистить",
+                            tint = c.textSecondary,
+                            modifier = Modifier.size(19.dp).clickable { query = "" },
+                        )
+                    }
+                }
+                Text(
+                    "Готово",
+                    style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
+                    color = accent,
+                    modifier = Modifier.clickable(onClick = onClose),
+                )
             }
 
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                placeholder = { Text("Название, исполнитель, альбом", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                leadingIcon = { Icon(Icons.Filled.Search, null) },
-                trailingIcon = {
-                    if (query.isNotEmpty()) {
-                        IconButton(onClick = { query = "" }) { Icon(Icons.Filled.Clear, "очистить") }
-                    }
-                },
-                keyboardActions = KeyboardActions(),
-            )
-
+            // Чипы-пилюли (горизонтальный скролл).
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
-                    .padding(vertical = 10.dp),
+                    .padding(top = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 SearchScope.entries.forEach { s ->
-                    FilterChip(
-                        selected = scope == s,
-                        onClick = { scope = s },
-                        label = { Text(s.label) },
-                    )
+                    ScopeChip(s.label, selected = scope == s, accent = accent) { scope = s }
                 }
             }
 
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
+                modifier = Modifier.fillMaxSize().padding(top = 8.dp),
             ) {
                 if (songs.isNotEmpty()) {
                     item { SectionLabel("Песни") }
                     items(songs, key = { "s_" + it.stableId }) { t ->
-                        TrackRow(
-                            track = t,
-                            artwork = graph.artwork,
-                            isCurrent = false,
-                            onClick = { onPlaySong(t, songs) },
-                        )
+                        SongResultRow(graph, t) { onPlaySong(t, songs) }
                     }
                 }
                 if (artists.isNotEmpty()) {
                     item { SectionLabel("Исполнители") }
                     items(artists, key = { "ar_" + it.id }) { a ->
-                        SearchGroupRow(a.name, Icons.Filled.Group) { onOpenArtist(a) }
+                        GroupResultRow(a.name, "исполнитель", ArtistGradient, circle = true) { onOpenArtist(a) }
                     }
                 }
                 if (albums.isNotEmpty()) {
                     item { SectionLabel("Альбомы") }
                     items(albums, key = { "al_" + it.id }) { al ->
-                        SearchGroupRow(al.title, Icons.Filled.Album) { onOpenAlbum(al) }
+                        GroupResultRow(al.title, al.year?.toString() ?: "альбом", AlbumGradient, circle = false) { onOpenAlbum(al) }
                     }
                 }
                 if (q.isNotEmpty() && songs.isEmpty() && artists.isEmpty() && albums.isEmpty()) {
                     item {
                         Text(
                             "Ничего не найдено",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = c.textSecondary,
+                            style = TextStyle(fontSize = 14.sp),
                             modifier = Modifier.padding(vertical = 24.dp),
                         )
                     }
@@ -164,22 +197,76 @@ fun SearchScreen(
 }
 
 @Composable
+private fun ScopeChip(label: String, selected: Boolean, accent: Color, onClick: () -> Unit) {
+    val c = auroraColors()
+    val shape = RoundedCornerShape(999.dp)
+    Box(
+        modifier = Modifier
+            .clip(shape)
+            .then(
+                if (selected) Modifier.background(Brush.linearGradient(listOf(accent, AuroraPurple)))
+                else Modifier.background(c.glassFillStrong).border(1.dp, c.glassBorder, shape),
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 7.dp),
+    ) {
+        Text(
+            label,
+            style = TextStyle(fontSize = 12.5.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal),
+            color = if (selected) Color.White else c.textSecondary,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
 private fun SectionLabel(text: String) {
     Text(
-        text,
-        style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.padding(top = 14.dp, bottom = 4.dp),
+        text.uppercase(),
+        style = TextStyle(fontSize = 10.sp, letterSpacing = 1.4.sp),
+        color = auroraColors().textTertiary,
+        modifier = Modifier.padding(top = 16.dp, bottom = 6.dp),
     )
 }
 
 @Composable
-private fun SearchGroupRow(title: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
+private fun SongResultRow(graph: AppGraph, track: Track, onClick: () -> Unit) {
+    val c = auroraColors()
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 10.dp, horizontal = 4.dp),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(40.dp).padding(6.dp))
-        Text(title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        ArtworkImage(
+            artwork = graph.artwork,
+            stableId = track.stableId,
+            shape = RoundedCornerShape(10.dp),
+            modifier = Modifier.size(44.dp),
+            iconScale = 0.5f,
+        )
+        Column(Modifier.weight(1f)) {
+            Text(track.title, style = TextStyle(fontSize = 14.5.sp, fontWeight = FontWeight.Medium), color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(track.artistName, style = TextStyle(fontSize = 12.sp), color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        track.durationMs?.let {
+            Text(formatTime(it), style = TextStyle(fontSize = 11.sp), color = c.textSecondary)
+        }
+    }
+}
+
+@Composable
+private fun GroupResultRow(title: String, subtitle: String, gradient: Brush, circle: Boolean, onClick: () -> Unit) {
+    val c = auroraColors()
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(Modifier.size(44.dp).clip(if (circle) CircleShape else RoundedCornerShape(8.dp)).background(gradient))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = TextStyle(fontSize = 14.5.sp, fontWeight = FontWeight.Medium), color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(subtitle, style = TextStyle(fontSize = 12.sp), color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = c.textFaint)
     }
 }

@@ -5,6 +5,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -25,6 +26,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
@@ -63,6 +65,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -81,8 +85,8 @@ import tech.thothlab.dombra.di.AppGraph
 import tech.thothlab.dombra.domain.model.RepeatMode
 import tech.thothlab.dombra.domain.model.Track
 import tech.thothlab.dombra.presentation.player.PlayerState
-import tech.thothlab.dombra.theme.GlassBorder
-import tech.thothlab.dombra.theme.GlassDark
+import tech.thothlab.dombra.theme.AuroraPurple
+import tech.thothlab.dombra.theme.auroraColors
 import tech.thothlab.dombra.theme.LocalAccentColor
 
 /**
@@ -376,10 +380,11 @@ private fun ControlsBar(
     onSkipNext: () -> Unit,
 ) {
     val onSurface = MaterialTheme.colorScheme.onSurface
+    val c = auroraColors()
     Surface(
-        color = GlassDark,
+        color = c.barSurface,
         shape = RoundedCornerShape(28.dp),
-        border = BorderStroke(1.dp, GlassBorder),
+        border = BorderStroke(1.dp, c.barBorder),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
@@ -397,16 +402,20 @@ private fun ControlsBar(
             IconButton(onClick = onSkipPrevious, enabled = enabled) {
                 Icon(Icons.Filled.SkipPrevious, contentDescription = "предыдущий", tint = onSurface, modifier = Modifier.size(32.dp))
             }
-            IconButton(
-                onClick = { graph.playback.togglePlayPause() },
-                enabled = enabled,
-                modifier = Modifier.size(64.dp),
+            // Центральная кнопка — акцентный градиентный круг (как в макете).
+            Box(
+                modifier = Modifier
+                    .size(62.dp)
+                    .clip(CircleShape)
+                    .background(Brush.linearGradient(listOf(accent, AuroraPurple)))
+                    .clickable(enabled = enabled) { graph.playback.togglePlayPause() },
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                     contentDescription = if (state.isPlaying) "пауза" else "играть",
-                    tint = onSurface,
-                    modifier = Modifier.size(44.dp),
+                    tint = Color.White,
+                    modifier = Modifier.size(32.dp),
                 )
             }
             IconButton(onClick = onSkipNext, enabled = enabled) {

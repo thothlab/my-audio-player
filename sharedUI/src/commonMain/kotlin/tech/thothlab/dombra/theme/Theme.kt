@@ -6,6 +6,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.Color
 import tech.thothlab.dombra.domain.model.AccentColor
 import tech.thothlab.dombra.domain.model.ThemeMode
 
@@ -101,14 +102,40 @@ internal fun AppTheme(
         ThemeMode.DARK -> true
     }
     val isDarkState = remember(isDark) { mutableStateOf(isDark) }
+    // Aurora-акцент по умолчанию (pink): в светлой теме берём более насыщенный #B11491
+    // для читаемости на белом (как в макете «Светлая тема»); в тёмной — #FF4F8B.
+    val accentColor =
+        if (!isDark && accent == AccentColor.AURORA) Color(0xFFB11491) else accent.toColor()
     CompositionLocalProvider(
         LocalThemeIsDark provides isDarkState,
-        LocalAccentColor provides accent.toColor(),
+        LocalAccentColor provides accentColor,
     ) {
         val dark by isDarkState
         onThemeChanged(!dark)
+        // Accent (Aurora) управляет Material-компонентами: кнопки, чипы, слайдеры, индикаторы.
+        // Поверхности/текст — по базе Aurora Glass: тёмная #0A0A12 / светлая #F4F1EC.
+        val base = if (dark) DarkColorScheme else LightColorScheme
+        val ink = if (dark) Color(0xFFF2F2F5) else Color(0xFF1B1620)
+        val bg = if (dark) Color(0xFF0A0A12) else Color(0xFFF4F1EC)
+        val scheme = base.copy(
+            primary = accentColor,
+            onPrimary = Color.White,
+            primaryContainer = accentColor,
+            onPrimaryContainer = Color.White,
+            secondary = accentColor,
+            onSecondary = Color.White,
+            secondaryContainer = accentColor,
+            onSecondaryContainer = Color.White,
+            tertiary = AuroraPurple,
+            surfaceTint = accentColor,
+            background = bg,
+            surface = bg,
+            onBackground = ink,
+            onSurface = ink,
+            onSurfaceVariant = ink.copy(alpha = 0.55f),
+        )
         MaterialTheme(
-            colorScheme = if (dark) DarkColorScheme else LightColorScheme,
+            colorScheme = scheme,
             content = { Surface(content = content) }
         )
     }

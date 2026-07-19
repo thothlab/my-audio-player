@@ -74,9 +74,7 @@ import tech.thothlab.dombra.domain.model.SortOrder
 import tech.thothlab.dombra.domain.model.Track
 import tech.thothlab.dombra.domain.model.sortedByOrder
 import tech.thothlab.dombra.presentation.player.PlayerState
-import tech.thothlab.dombra.theme.GlassBorder
-import tech.thothlab.dombra.theme.GlassFill
-import tech.thothlab.dombra.theme.GlassFillStrong
+import tech.thothlab.dombra.theme.auroraColors
 import tech.thothlab.dombra.theme.iconTileBrush
 
 /** Метаданные раздела «Медиатеки» — иконка, цвет плитки, заголовок и подпись (по образцу Cosmos). */
@@ -171,11 +169,12 @@ fun MediaHomeScreen(
 
 @Composable
 private fun SectionCard(meta: SectionMeta, onClick: () -> Unit) {
+    val c = auroraColors()
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(18.dp),
-        color = GlassFill,
-        border = BorderStroke(1.dp, GlassBorder),
+        color = c.glassFill,
+        border = BorderStroke(1.dp, c.glassBorder),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
@@ -226,11 +225,12 @@ private fun MediaGroupCard(
     onClick: () -> Unit,
     cover: @Composable (() -> Unit)? = null,
 ) {
+    val c = auroraColors()
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(16.dp),
-        color = GlassFill,
-        border = BorderStroke(1.dp, GlassBorder),
+        color = c.glassFill,
+        border = BorderStroke(1.dp, c.glassBorder),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {

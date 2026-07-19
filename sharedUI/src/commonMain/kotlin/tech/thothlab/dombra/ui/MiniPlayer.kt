@@ -39,8 +39,7 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import tech.thothlab.dombra.di.AppGraph
-import tech.thothlab.dombra.theme.GlassBorder
-import tech.thothlab.dombra.theme.GlassDark
+import tech.thothlab.dombra.theme.auroraColors
 import tech.thothlab.dombra.domain.model.Track
 import tech.thothlab.dombra.presentation.player.PlayerState
 
@@ -63,6 +62,7 @@ fun MiniPlayer(
     // Новый трек → вернуть бар в центр (сбросить остаточный сдвиг).
     LaunchedEffect(track.stableId) { offsetX.snapTo(0f) }
 
+    val c = auroraColors()
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -91,8 +91,8 @@ fun MiniPlayer(
                 detectTapGestures { onExpand() }
             },
         shape = RoundedCornerShape(16.dp),
-        color = GlassDark,
-        border = BorderStroke(1.dp, GlassBorder),
+        color = c.barSurface,
+        border = BorderStroke(1.dp, c.barBorder),
         shadowElevation = 4.dp,
     ) {
         Row(

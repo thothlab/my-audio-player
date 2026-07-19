@@ -43,8 +43,7 @@ import tech.thothlab.dombra.di.AppGraph
 import tech.thothlab.dombra.domain.model.AccentColor
 import tech.thothlab.dombra.domain.model.AppSettings
 import tech.thothlab.dombra.domain.model.ThemeMode
-import tech.thothlab.dombra.theme.GlassBorder
-import tech.thothlab.dombra.theme.GlassFill
+import tech.thothlab.dombra.theme.auroraColors
 import tech.thothlab.dombra.theme.toColor
 
 /** Настройки: выбор accent-цвета (палитра Cosmos) и темы. */
@@ -104,11 +103,12 @@ fun SettingsScreen(graph: AppGraph, settings: AppSettings, onBack: () -> Unit, o
             }
 
             Text("Источники", style = MaterialTheme.typography.titleMedium)
+            val c = auroraColors()
             Surface(
                 onClick = onOpenServer,
                 shape = RoundedCornerShape(16.dp),
-                color = GlassFill,
-                border = BorderStroke(1.dp, GlassBorder),
+                color = c.glassFill,
+                border = BorderStroke(1.dp, c.glassBorder),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Row(
