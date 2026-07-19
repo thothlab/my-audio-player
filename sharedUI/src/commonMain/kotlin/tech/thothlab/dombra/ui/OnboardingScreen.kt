@@ -1,5 +1,6 @@
 package tech.thothlab.dombra.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,7 +20,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +37,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import dombra.sharedui.generated.resources.Res
+import dombra.sharedui.generated.resources.dombra_icon
+import org.jetbrains.compose.resources.painterResource
 import tech.thothlab.dombra.theme.LocalAccentColor
 
 /**
@@ -79,20 +82,28 @@ fun OnboardingScreen(
 
             Spacer(Modifier.weight(1f))
 
-            // Иконка.
-            Surface(
-                shape = RoundedCornerShape(28.dp),
-                color = accent,
-                shadowElevation = 10.dp,
-                modifier = Modifier.size(100.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = if (step == 0) Icons.Filled.MusicNote else Icons.Filled.Folder,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.surface,
-                        modifier = Modifier.size(52.dp),
-                    )
+            // Иконка: на welcome — домбра-логотип, на шаге источника — папка.
+            if (step == 0) {
+                Image(
+                    painter = painterResource(Res.drawable.dombra_icon),
+                    contentDescription = null,
+                    modifier = Modifier.size(104.dp).clip(RoundedCornerShape(28.dp)),
+                )
+            } else {
+                Surface(
+                    shape = RoundedCornerShape(28.dp),
+                    color = accent,
+                    shadowElevation = 10.dp,
+                    modifier = Modifier.size(100.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Filled.Folder,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.surface,
+                            modifier = Modifier.size(52.dp),
+                        )
+                    }
                 }
             }
 

@@ -1,6 +1,7 @@
 package tech.thothlab.dombra.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -57,10 +58,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dombra.sharedui.generated.resources.Res
+import dombra.sharedui.generated.resources.dombra_icon
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
 import tech.thothlab.dombra.di.AppGraph
 import tech.thothlab.dombra.domain.model.Album
 import tech.thothlab.dombra.domain.model.Artist
@@ -119,11 +123,11 @@ fun MediaHomeScreen(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Surface(shape = RoundedCornerShape(10.dp), color = LocalAccentColorSafe(), modifier = Modifier.size(36.dp)) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Filled.MusicNote, null, tint = MaterialTheme.colorScheme.surface, modifier = Modifier.size(20.dp))
-                    }
-                }
+                Image(
+                    painter = painterResource(Res.drawable.dombra_icon),
+                    contentDescription = null,
+                    modifier = Modifier.size(38.dp).clip(RoundedCornerShape(10.dp)),
+                )
                 Text(
                     "Медиатека",
                     style = MaterialTheme.typography.headlineSmall,
