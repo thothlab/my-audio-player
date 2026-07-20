@@ -217,6 +217,8 @@ data class AppSettings(
     val replayGainPreampDb: Double = 0.0,
     val showLyricsButton: Boolean = true,
     val showSleepTimerButton: Boolean = false,
+    /** Включён ли эквалайзер (UI/представление; аудио-DSP — отдельная задача). */
+    val equalizerEnabled: Boolean = false,
     /** Пройден ли онбординг первого запуска (PRD-03 T01). */
     val onboardingDone: Boolean = false,
     /** Порядок сортировки по ключу коллекции (PRD-03 T03): "all"/"liked"/"artist:id"/… */

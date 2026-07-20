@@ -24,6 +24,9 @@ sealed interface Screen {
 
     data object Player : Screen
     data object Settings : Screen
+
+    /** Экран эквалайзера (полосы + предусиление). */
+    data object Equalizer : Screen
 }
 
 /** Источник списка треков для [Screen.Tracks]. */

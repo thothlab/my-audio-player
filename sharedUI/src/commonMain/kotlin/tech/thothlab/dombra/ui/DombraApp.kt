@@ -145,6 +145,13 @@ private fun MainShell(
             graph, settings,
             onBack = { nav.pop() },
             onOpenServer = { nav.push(Screen.Server) },
+            onOpenEqualizer = { nav.push(Screen.Equalizer) },
+        )
+
+        Screen.Equalizer -> EqualizerScreen(
+            enabled = settings.equalizerEnabled,
+            onEnabledChange = { on -> scope.launch { graph.settings.update { it.copy(equalizerEnabled = on) } } },
+            onBack = { nav.pop() },
         )
     }
 }
