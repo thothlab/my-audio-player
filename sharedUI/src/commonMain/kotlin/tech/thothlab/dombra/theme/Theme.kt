@@ -5,8 +5,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.Typography
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import tech.thothlab.dombra.domain.model.AccentColor
 import tech.thothlab.dombra.domain.model.ThemeMode
 
@@ -144,8 +147,20 @@ internal fun AppTheme(
             surfaceContainerHigh = if (dark) Color(0xFF1F1B27) else Color(0xFFECE7EF),
             surfaceContainerHighest = if (dark) Color(0xFF272230) else Color(0xFFE6E1EA),
         )
+        // Заголовки экранов — жирные и чуть компактнее (по макету заголовки 20–23px, w700;
+        // Material headlineSmall по умолчанию 24sp/regular — выглядел крупнее и легче макета).
+        val baseType = Typography()
+        val typography = baseType.copy(
+            headlineSmall = baseType.headlineSmall.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 22.sp,
+                letterSpacing = (-0.3).sp,
+            ),
+            titleMedium = baseType.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+        )
         MaterialTheme(
             colorScheme = scheme,
+            typography = typography,
             content = { Surface(content = content) }
         )
     }
