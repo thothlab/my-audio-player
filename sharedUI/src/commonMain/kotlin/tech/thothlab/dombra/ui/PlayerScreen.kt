@@ -6,6 +6,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -29,6 +30,8 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -58,12 +61,14 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.util.lerp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
@@ -76,6 +81,7 @@ import tech.thothlab.dombra.theme.Sym
 import tech.thothlab.dombra.theme.Symbol
 import tech.thothlab.dombra.theme.auroraColors
 import tech.thothlab.dombra.theme.LocalAccentColor
+import tech.thothlab.dombra.theme.LocalThemeIsDark
 
 /**
  * Полноэкранный плеер в облике Cosmos (`Views/Player/PlayerViews.swift`):
@@ -93,6 +99,7 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
     val artDrag = remember { Animatable(0f) }
     var carouselStep by remember { mutableStateOf(0f) }
     var showPlaylistSheet by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
     val dur = (state.durationMs ?: 0L).toFloat()
 
     // Смена трека кнопками «вперёд/назад» — с тем же плавным слайдом карусели, что и свайп.
@@ -120,11 +127,39 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
                 .padding(horizontal = 24.dp, vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            // Верхняя панель: свернуть (стекло-круг) · eyebrow · «ещё» (стекло-круг) — по макету.
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
-                    Symbol(Sym.KeyboardArrowDown, size = 32.dp)
+                GlassCircle(Sym.KeyboardArrowDown, glyphSize = 24.dp, onClick = onBack)
+                Text(
+                    "СЕЙЧАС ИГРАЕТ",
+                    fontSize = 10.5.sp,
+                    letterSpacing = 1.6.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+                )
+                Box {
+                    GlassCircle(Sym.MoreVert, glyphSize = 20.dp, onClick = { showMenu = true })
+                    val c = auroraColors()
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false },
+                        shape = RoundedCornerShape(16.dp),
+                        containerColor = c.popoverSurface,
+                        border = BorderStroke(1.dp, c.popoverBorder),
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Добавить в плейлист", color = c.textPrimary) },
+                            onClick = { showMenu = false; showPlaylistSheet = true },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Остановить", color = c.textPrimary) },
+                            onClick = { showMenu = false; graph.playback.clear(); onBack() },
+                        )
+                    }
                 }
-                Spacer(Modifier.weight(1f))
             }
 
             // Обложка-карусель: соседние обложки выглядывают слева/справа, свайп меняет трек.
@@ -176,45 +211,44 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
 
             Spacer(Modifier.height(24.dp))
 
-            Text(
-                text = track?.title ?: "нет трека",
-                style = MaterialTheme.typography.titleLarge,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = track?.artistName ?: "",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-
-            // Кнопки «в избранное» / «в плейлист».
-            if (track != null) {
-                val fav by remember(track.stableId) { graph.library.isFavorite(track.stableId) }
-                    .collectAsState(initial = false)
-                Row(
-                    modifier = Modifier.padding(top = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconButton(onClick = { scope.launch { graph.library.setFavorite(track.stableId, !fav) } }) {
-                        Symbol(
+            // Название/исполнитель слева, «в избранное»/«в плейлист» стекло-кругами справа (по макету).
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = track?.title ?: "нет трека",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = (-0.3).sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = track?.artistName ?: "",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 3.dp),
+                    )
+                }
+                if (track != null) {
+                    val fav by remember(track.stableId) { graph.library.isFavorite(track.stableId) }
+                        .collectAsState(initial = false)
+                    Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                        GlassCircle(
                             Sym.Favorite,
                             filled = fav,
-                            size = 24.dp,
+                            glyphSize = 21.dp,
                             tint = if (fav) accent else MaterialTheme.colorScheme.onSurface,
+                            onClick = { scope.launch { graph.library.setFavorite(track.stableId, !fav) } },
                         )
-                    }
-                    IconButton(onClick = { showPlaylistSheet = true }) {
-                        Symbol(Sym.Add, size = 24.dp, tint = MaterialTheme.colorScheme.onSurface)
+                        GlassCircle(Sym.Add, glyphSize = 21.dp, onClick = { showPlaylistSheet = true })
                     }
                 }
             }
 
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(16.dp))
 
             SeekBar(
                 fraction = fraction,
@@ -354,6 +388,33 @@ private fun AddToPlaylistSheet(graph: AppGraph, track: Track, onDismiss: () -> U
     }
 }
 
+/** Круглая «стеклянная» кнопка плеера (свернуть/ещё/избранное/плейлист) — по макету. */
+@Composable
+private fun GlassCircle(
+    glyph: Char,
+    modifier: Modifier = Modifier,
+    filled: Boolean = false,
+    size: Dp = 40.dp,
+    glyphSize: Dp = 21.dp,
+    tint: Color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
+    onClick: () -> Unit,
+) {
+    val dark = LocalThemeIsDark.current.value
+    val bg = if (dark) Color(0x1AFFFFFF) else Color(0x0D000000)
+    val stroke = if (dark) Color(0x26FFFFFF) else Color(0x14000000)
+    Box(
+        modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(bg)
+            .border(1.dp, stroke, CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Symbol(glyph, filled = filled, size = glyphSize, tint = tint)
+    }
+}
+
 @Composable
 private fun ControlsBar(
     graph: AppGraph,
@@ -422,6 +483,7 @@ private fun SeekBar(
     onSeekFinished: () -> Unit,
 ) {
     var width by remember { mutableStateOf(1f) }
+    val trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.16f)
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -440,21 +502,22 @@ private fun SeekBar(
     ) {
         Canvas(Modifier.fillMaxWidth().height(16.dp)) {
             val cy = size.height / 2
-            val trackH = 4.dp.toPx()
+            val trackH = 5.dp.toPx()
             val w = size.width
             drawRoundRect(
-                color = Color.Gray.copy(alpha = 0.3f),
+                color = trackColor,
                 topLeft = Offset(0f, cy - trackH / 2),
                 size = Size(w, trackH),
                 cornerRadius = CornerRadius(trackH / 2),
             )
-            drawRoundRect(
-                color = accent,
-                topLeft = Offset(0f, cy - trackH / 2),
-                size = Size(w * fraction, trackH),
-                cornerRadius = CornerRadius(trackH / 2),
-            )
-            drawCircle(color = accent, radius = 6.dp.toPx(), center = Offset(w * fraction, cy))
+            if (fraction > 0f) {
+                drawRoundRect(
+                    brush = Brush.horizontalGradient(listOf(accent, AuroraPurple), startX = 0f, endX = w),
+                    topLeft = Offset(0f, cy - trackH / 2),
+                    size = Size(w * fraction, trackH),
+                    cornerRadius = CornerRadius(trackH / 2),
+                )
+            }
         }
     }
 }
