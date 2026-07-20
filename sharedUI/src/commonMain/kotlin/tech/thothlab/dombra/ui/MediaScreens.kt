@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -76,6 +77,8 @@ import tech.thothlab.dombra.domain.model.sortedByOrder
 import tech.thothlab.dombra.presentation.player.PlayerState
 import tech.thothlab.dombra.theme.auroraColors
 import tech.thothlab.dombra.theme.iconTileBrush
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 
 /** Метаданные раздела «Медиатеки» — иконка, цвет плитки, заголовок и подпись (по образцу Cosmos). */
 private data class SectionMeta(
@@ -161,7 +164,7 @@ fun MediaHomeScreen(
             onExpand = onOpenPlayer,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .windowInsetsPadding(WindowInsets.navigationBars)
                 .padding(horizontal = 12.dp, vertical = 10.dp),
         )
     }
@@ -428,7 +431,7 @@ private fun TrackListScreen(
             onExpand = onOpenPlayer,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .windowInsetsPadding(WindowInsets.navigationBars)
                 .padding(horizontal = 12.dp, vertical = 10.dp),
         )
     }
@@ -443,6 +446,9 @@ private fun SortShufflePill(
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val accent = LocalAccentColorSafe()
+    val c = auroraColors()
+    val dark = tech.thothlab.dombra.theme.LocalThemeIsDark.current.value
+    val popupBg = if (dark) Color(0xFF1B1922) else Color(0xFFF5F3F6)
     Surface(
         shape = RoundedCornerShape(24.dp),
         color = accent.copy(alpha = 0.14f),
@@ -455,13 +461,33 @@ private fun SortShufflePill(
                 IconButton(onClick = { menuOpen = true }) {
                     Icon(Icons.AutoMirrored.Filled.Sort, "сортировка", tint = accent)
                 }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenu(
+                    expanded = menuOpen,
+                    onDismissRequest = { menuOpen = false },
+                    shape = RoundedCornerShape(16.dp),
+                    containerColor = popupBg,
+                    border = BorderStroke(1.dp, c.glassBorder),
+                ) {
+                    Text(
+                        "СОРТИРОВКА",
+                        fontSize = 10.sp,
+                        letterSpacing = 1.6.sp,
+                        color = c.textTertiary,
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp),
+                    )
                     SortOrder.entries.forEach { o ->
+                        val selected = o == order
                         DropdownMenuItem(
-                            text = { Text(o.label) },
+                            text = {
+                                Text(
+                                    o.label,
+                                    color = if (selected) accent else c.textPrimary,
+                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                                )
+                            },
                             onClick = { onPick(o); menuOpen = false },
                             trailingIcon = {
-                                if (o == order) Icon(Icons.Filled.Check, null, tint = accent)
+                                if (selected) Icon(Icons.Filled.Check, null, tint = accent)
                             },
                         )
                     }
@@ -502,7 +528,7 @@ private fun GroupListScreen(
             onExpand = onOpenPlayer,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .windowInsetsPadding(WindowInsets.navigationBars)
                 .padding(horizontal = 12.dp, vertical = 10.dp),
         )
     }

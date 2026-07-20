@@ -62,6 +62,8 @@ private fun MainShell(
     val player: PlayerState by graph.playback.state.collectAsState()
     val scope = rememberCoroutineScope()
     var refreshing by remember { mutableStateOf(false) }
+    // Состояние поиска держим здесь (над навигацией), чтобы «назад» восстанавливал запрос/область.
+    val searchState = remember { SearchUiState() }
 
     // Системная кнопка «назад» (Android) → предыдущий экран.
     PlatformBackHandler(enabled = nav.canPop) { nav.pop() }
@@ -110,6 +112,7 @@ private fun MainShell(
 
         Screen.Search -> SearchScreen(
             graph = graph,
+            state = searchState,
             onClose = { nav.pop() },
             onPlaySong = { track, list -> graph.playback.playNow(track, list) },
             onOpenArtist = { nav.push(Screen.Tracks(it.name, TrackListRef.Artist(it.id))) },

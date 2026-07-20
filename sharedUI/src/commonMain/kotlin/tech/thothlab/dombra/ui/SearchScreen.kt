@@ -53,22 +53,32 @@ import tech.thothlab.dombra.theme.AuroraPurple
 import tech.thothlab.dombra.theme.LocalAccentColor
 import tech.thothlab.dombra.theme.auroraColors
 
-private enum class SearchScope(val label: String) { ALL("Все"), SONGS("Песни"), ARTISTS("Исполнители"), ALBUMS("Альбомы") }
+internal enum class SearchScope(val label: String) { ALL("Все"), SONGS("Песни"), ARTISTS("Исполнители"), ALBUMS("Альбомы") }
+
+/**
+ * Состояние экрана поиска (запрос + область), живущее ВЫШЕ навигации — чтобы при уходе
+ * на детали и возврате «назад» поиск восстанавливался, а не создавался заново.
+ */
+internal class SearchUiState {
+    var query by mutableStateOf("")
+    var scope by mutableStateOf(SearchScope.ALL)
+}
 
 private val ArtistGradient = Brush.linearGradient(listOf(Color(0xFF2DD4BF), Color(0xFF0E7490)))
 private val AlbumGradient = Brush.linearGradient(listOf(Color(0xFFF59E0B), Color(0xFFB45309)))
 
 /** Экран поиска (Aurora Glass): пилюля-поле + «Готово» + чипы-пилюли + сгруппированные результаты. */
 @Composable
-fun SearchScreen(
+internal fun SearchScreen(
     graph: AppGraph,
+    state: SearchUiState,
     onClose: () -> Unit,
     onPlaySong: (Track, List<Track>) -> Unit,
     onOpenArtist: (Artist) -> Unit,
     onOpenAlbum: (Album) -> Unit,
 ) {
-    var query by remember { mutableStateOf("") }
-    var scope by remember { mutableStateOf(SearchScope.ALL) }
+    val query = state.query
+    val scope = state.scope
     val q = query.trim()
     val accent = LocalAccentColor.current
     val c = auroraColors()
@@ -124,7 +134,7 @@ fun SearchScreen(
                         }
                         BasicTextField(
                             value = query,
-                            onValueChange = { query = it },
+                            onValueChange = { state.query = it },
                             singleLine = true,
                             textStyle = TextStyle(fontSize = 15.sp, color = c.textPrimary),
                             cursorBrush = SolidColor(accent),
@@ -135,7 +145,7 @@ fun SearchScreen(
                         Icon(
                             Icons.Filled.Clear, "очистить",
                             tint = c.textSecondary,
-                            modifier = Modifier.size(19.dp).clickable { query = "" },
+                            modifier = Modifier.size(19.dp).clickable { state.query = "" },
                         )
                     }
                 }
@@ -156,7 +166,7 @@ fun SearchScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 SearchScope.entries.forEach { s ->
-                    ScopeChip(s.label, selected = scope == s, accent = accent) { scope = s }
+                    ScopeChip(s.label, selected = scope == s, accent = accent) { state.scope = s }
                 }
             }
 

@@ -93,7 +93,6 @@ fun MiniPlayer(
         shape = RoundedCornerShape(16.dp),
         color = c.barSurface,
         border = BorderStroke(1.dp, c.barBorder),
-        shadowElevation = 4.dp,
     ) {
         Row(
             modifier = Modifier

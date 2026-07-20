@@ -5,15 +5,15 @@ import kotlinx.serialization.Serializable
 /** Порядок сортировки списка треков (PRD-03 T03, по образцу меню сортировки Cosmos). */
 @Serializable
 enum class SortOrder(val label: String) {
-    MANUAL("Ручной порядок"),
-    DATE_ADDED_DESC("Дата добавления (сначала новые)"),
-    DATE_ADDED_ASC("Дата добавления (сначала старые)"),
-    TITLE_AZ("Название (A-Z)"),
-    TITLE_ZA("Название (Z-A)"),
-    ARTIST_AZ("Исполнитель (A-Z)"),
-    ARTIST_ZA("Исполнитель (Z-A)"),
-    SIZE_DESC("Размер (сначала большие)"),
-    SIZE_ASC("Размер (сначала маленькие)"),
+    MANUAL("Вручную"),
+    DATE_ADDED_DESC("Дата добавления · новые"),
+    DATE_ADDED_ASC("Дата добавления · старые"),
+    TITLE_AZ("Название · А–Я"),
+    TITLE_ZA("Название · Я–А"),
+    ARTIST_AZ("Исполнитель · А–Я"),
+    ARTIST_ZA("Исполнитель · Я–А"),
+    SIZE_DESC("Размер · большие"),
+    SIZE_ASC("Размер · маленькие"),
 }
 
 /** Применяет порядок к списку треков. MANUAL — исходный порядок источника (без ре-сортировки). */
