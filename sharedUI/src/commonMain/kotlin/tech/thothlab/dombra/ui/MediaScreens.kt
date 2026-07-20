@@ -541,6 +541,8 @@ internal fun TrackRow(
     val accent = LocalAccentColorSafe()
     val c = auroraColors()
     Row(
+        // Подсветка/рамка — на всю ширину строки (снаружи паддинга), а внутренний
+        // отступ ОДИНАКОВ для всех строк → иконки строго в одну вертикаль (как в макете).
         modifier = Modifier
             .fillMaxWidth()
             .then(
@@ -554,7 +556,7 @@ internal fun TrackRow(
                 },
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = if (isCurrent) 8.dp else 0.dp, vertical = if (isCurrent) 8.dp else 6.dp),
+            .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
