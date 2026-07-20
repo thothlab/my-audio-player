@@ -9,7 +9,7 @@ import androidx.compose.ui.graphics.Color
  *  - тёмная: стекло (белый с низкой прозрачностью) на почти-чёрном фоне #0A0A12, светлый текст;
  *  - светлая: белое матовое стекло на тёплой базе #F4F1EC, тёмный текст.
  * Плитки-иконки — градиент accent → фиолетовый (одинаково в обеих темах).
- * Значения выверены по дизайн-макету (handoff, «Ход 8 · Светлая тема»).
+ * Все alpha/цвета выверены по дизайн-макету (handoff turn-2 · тёмная, turn-8 · светлая).
  */
 
 /** Дополнительный цвет Aurora — фиолетовый (второй конец градиентов плиток/обложек). */
@@ -18,26 +18,36 @@ val AuroraPurple = Color(0xFFA06BFF)
 /** Тёмный текст светлой темы (тёплый near-black). */
 private val InkLight = Color(0xFF1B1620)
 
-/** Набор theme-aware токенов Aurora Glass. Берётся через [auroraColors]. */
+/**
+ * Набор theme-aware токенов Aurora Glass. Берётся через [auroraColors].
+ * Разделение поверхностей — по макету: мягкая карточка (.06) / поле-чип-активная строка (.08) /
+ * плавающий бар (.09) / тёмный поповер (#16141E .86).
+ */
 class AuroraColors(
-    /** Основной текст. */
+    /** Основной текст (#fff / #1B1620). */
     val textPrimary: Color,
-    /** Вторичный текст (~55%). */
+    /** Вторичный текст — подзаголовки (~.55). */
     val textSecondary: Color,
-    /** Приглушённый текст / подписи (~45%). */
+    /** Приглушённый текст — eyebrow/meta (~.45). */
     val textTertiary: Color,
-    /** Едва заметный текст / шевроны (~35%). */
+    /** Едва заметный текст — шевроны (~.35 / .32). */
     val textFaint: Color,
-    /** Заливка карточки (стекло). */
+    /** Заливка мягкой карточки (список «Медиатека», карта звука, сегмент-трек). */
     val glassFill: Color,
-    /** Более заметная стеклянная заливка — пилюли/поля/чипы. */
-    val glassFillStrong: Color,
-    /** Тонкая рамка стекла. */
+    /** Рамка мягкой карточки. */
     val glassBorder: Color,
-    /** Плавающие бары (мини-плеер, контролы) — матовая поверхность поверх контента. */
+    /** Более заметная заливка — поля/чипы/активная строка/круглые кнопки. */
+    val glassFillStrong: Color,
+    /** Рамка заметной заливки. */
+    val glassBorderStrong: Color,
+    /** Плавающие бары (мини-плеер, транспорт, пилюля сортировки). */
     val barSurface: Color,
     /** Рамка плавающих баров. */
     val barBorder: Color,
+    /** Поповер/выпадающее меню (тёмное стекло / светлая плашка). */
+    val popoverSurface: Color,
+    /** Рамка поповера. */
+    val popoverBorder: Color,
 )
 
 /** Тёмная база: белое стекло на #0A0A12. */
@@ -46,11 +56,14 @@ val DarkAuroraColors = AuroraColors(
     textSecondary = Color.White.copy(alpha = 0.55f),
     textTertiary = Color.White.copy(alpha = 0.45f),
     textFaint = Color.White.copy(alpha = 0.35f),
-    glassFill = Color(0x12FFFFFF),
-    glassFillStrong = Color(0x1FFFFFFF),
-    glassBorder = Color(0x24FFFFFF),
-    barSurface = Color(0xE016141E),
-    barBorder = Color(0x1AFFFFFF),
+    glassFill = Color(0x0FFFFFFF),        // white .06
+    glassBorder = Color(0x1AFFFFFF),      // white .10
+    glassFillStrong = Color(0x14FFFFFF),  // white .08
+    glassBorderStrong = Color(0x1FFFFFFF),// white .12
+    barSurface = Color(0x17FFFFFF),       // white .09
+    barBorder = Color(0x24FFFFFF),        // white .14
+    popoverSurface = Color(0xDB16141E),   // #16141E .86
+    popoverBorder = Color(0x24FFFFFF),    // white .14
 )
 
 /** Светлая база: белое матовое стекло на #F4F1EC, тёмный текст. */
@@ -60,10 +73,13 @@ val LightAuroraColors = AuroraColors(
     textTertiary = InkLight.copy(alpha = 0.45f),
     textFaint = InkLight.copy(alpha = 0.32f),
     glassFill = Color.White.copy(alpha = 0.72f),
+    glassBorder = InkLight.copy(alpha = 0.07f),
     glassFillStrong = Color.White.copy(alpha = 0.72f),
-    glassBorder = InkLight.copy(alpha = 0.08f),
+    glassBorderStrong = InkLight.copy(alpha = 0.08f),
     barSurface = Color.White.copy(alpha = 0.82f),
     barBorder = InkLight.copy(alpha = 0.08f),
+    popoverSurface = Color(0xFFF5F3F6),
+    popoverBorder = InkLight.copy(alpha = 0.08f),
 )
 
 /** Токены Aurora Glass для текущей темы (тёмная/светлая). */

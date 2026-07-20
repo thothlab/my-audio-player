@@ -21,12 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -58,6 +53,8 @@ import tech.thothlab.dombra.data.remote.subsonic.SubAlbum
 import tech.thothlab.dombra.di.AppGraph
 import tech.thothlab.dombra.theme.AuroraPurple
 import tech.thothlab.dombra.theme.LocalAccentColor
+import tech.thothlab.dombra.theme.Sym
+import tech.thothlab.dombra.theme.Symbol
 import tech.thothlab.dombra.theme.auroraColors
 
 /** Экран удалённого источника: форма подключения (если не подключён) или просмотр библиотеки сервера. */
@@ -81,7 +78,7 @@ fun ServerScreen(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "назад") }
+                IconButton(onClick = onBack) { Symbol(Sym.ChevronLeft, size = 28.dp, tint = MaterialTheme.colorScheme.onSurface) }
                 Text(
                     if (config == null) "Сервер Subsonic" else (config?.label ?: "Сервер"),
                     style = MaterialTheme.typography.headlineSmall,
@@ -211,7 +208,7 @@ private fun ConnectForm(graph: AppGraph) {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
         ) {
-            Icon(Icons.Filled.Lock, null, tint = c.textFaint, modifier = Modifier.size(16.dp))
+            Symbol(Sym.Lock, size = 16.dp, tint = c.textFaint)
             Text(
                 "Пароль не хранится в открытом виде — только salt + token (md5). Поток запрашивается как format=raw.",
                 style = TextStyle(fontSize = 11.sp, lineHeight = 16.sp),
@@ -249,7 +246,7 @@ private fun ServerBrowse(graph: AppGraph, onOpenAlbum: (String, String) -> Unit)
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(9.dp),
         ) {
-            Icon(Icons.Filled.Search, null, tint = c.textSecondary, modifier = Modifier.size(20.dp))
+            Symbol(Sym.Search, size = 20.dp, tint = c.textSecondary)
             Box(Modifier.weight(1f)) {
                 if (query.isEmpty()) {
                     Text("Поиск по серверу", style = TextStyle(fontSize = 14.sp), color = c.textTertiary)
@@ -328,7 +325,7 @@ fun RemoteAlbumScreen(graph: AppGraph, albumId: String, title: String, onBack: (
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "назад") }
+                IconButton(onClick = onBack) { Symbol(Sym.ChevronLeft, size = 28.dp, tint = MaterialTheme.colorScheme.onSurface) }
                 Text(title, style = MaterialTheme.typography.headlineSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 4.dp))
             }
             if (tracks.isEmpty()) {

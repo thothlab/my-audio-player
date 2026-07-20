@@ -28,22 +28,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material.icons.filled.RepeatOne
-import androidx.compose.material.icons.filled.Shuffle
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -86,6 +72,8 @@ import tech.thothlab.dombra.domain.model.RepeatMode
 import tech.thothlab.dombra.domain.model.Track
 import tech.thothlab.dombra.presentation.player.PlayerState
 import tech.thothlab.dombra.theme.AuroraPurple
+import tech.thothlab.dombra.theme.Sym
+import tech.thothlab.dombra.theme.Symbol
 import tech.thothlab.dombra.theme.auroraColors
 import tech.thothlab.dombra.theme.LocalAccentColor
 
@@ -134,11 +122,7 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
         ) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
-                    Icon(
-                        Icons.Filled.KeyboardArrowDown,
-                        contentDescription = "свернуть",
-                        modifier = Modifier.size(36.dp),
-                    )
+                    Symbol(Sym.KeyboardArrowDown, size = 32.dp)
                 }
                 Spacer(Modifier.weight(1f))
             }
@@ -216,18 +200,15 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     IconButton(onClick = { scope.launch { graph.library.setFavorite(track.stableId, !fav) } }) {
-                        Icon(
-                            if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                            contentDescription = "в избранное",
+                        Symbol(
+                            Sym.Favorite,
+                            filled = fav,
+                            size = 24.dp,
                             tint = if (fav) accent else MaterialTheme.colorScheme.onSurface,
                         )
                     }
                     IconButton(onClick = { showPlaylistSheet = true }) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.PlaylistAdd,
-                            contentDescription = "в плейлист",
-                            tint = MaterialTheme.colorScheme.onSurface,
-                        )
+                        Symbol(Sym.Add, size = 24.dp, tint = MaterialTheme.colorScheme.onSurface)
                     }
                 }
             }
@@ -336,7 +317,7 @@ private fun AddToPlaylistSheet(graph: AppGraph, track: Track, onDismiss: () -> U
             }
             ListItem(
                 headlineContent = { Text("Создать плейлист") },
-                leadingContent = { Icon(Icons.Filled.Add, null) },
+                leadingContent = { Symbol(Sym.Add, size = 24.dp) },
                 modifier = Modifier.clickable { showCreate = true },
             )
         }
@@ -383,7 +364,7 @@ private fun ControlsBar(
     val c = auroraColors()
     Surface(
         color = c.barSurface,
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(26.dp),
         border = BorderStroke(1.dp, c.barBorder),
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -393,14 +374,10 @@ private fun ControlsBar(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = { graph.playback.toggleShuffle() }) {
-                Icon(
-                    Icons.Filled.Shuffle,
-                    contentDescription = "перемешать",
-                    tint = if (state.shuffled) accent else onSurface,
-                )
+                Symbol(Sym.Shuffle, size = 23.dp, tint = if (state.shuffled) accent else onSurface)
             }
             IconButton(onClick = onSkipPrevious, enabled = enabled) {
-                Icon(Icons.Filled.SkipPrevious, contentDescription = "предыдущий", tint = onSurface, modifier = Modifier.size(32.dp))
+                Symbol(Sym.SkipPrevious, size = 30.dp, tint = onSurface)
             }
             // Центральная кнопка — акцентный градиентный круг (как в макете).
             Box(
@@ -411,21 +388,21 @@ private fun ControlsBar(
                     .clickable(enabled = enabled) { graph.playback.togglePlayPause() },
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                    contentDescription = if (state.isPlaying) "пауза" else "играть",
+                Symbol(
+                    if (state.isPlaying) Sym.Pause else Sym.PlayArrow,
+                    filled = true,
+                    size = 31.dp,
                     tint = Color.White,
-                    modifier = Modifier.size(32.dp),
                 )
             }
             IconButton(onClick = onSkipNext, enabled = enabled) {
-                Icon(Icons.Filled.SkipNext, contentDescription = "следующий", tint = onSurface, modifier = Modifier.size(32.dp))
+                Symbol(Sym.SkipNext, size = 30.dp, tint = onSurface)
             }
             IconButton(onClick = { graph.playback.cycleRepeatMode() }) {
                 when (state.repeatMode) {
-                    RepeatMode.OFF -> Icon(Icons.Filled.Repeat, contentDescription = "повтор", tint = onSurface)
-                    RepeatMode.ALL -> Icon(Icons.Filled.Repeat, contentDescription = "повтор всё", tint = accent)
-                    RepeatMode.ONE -> Icon(Icons.Filled.RepeatOne, contentDescription = "повтор один", tint = accent)
+                    RepeatMode.OFF -> Symbol(Sym.Repeat, size = 23.dp, tint = onSurface)
+                    RepeatMode.ALL -> Symbol(Sym.Repeat, size = 23.dp, tint = accent)
+                    RepeatMode.ONE -> Symbol(Sym.RepeatOne, size = 23.dp, tint = accent)
                 }
             }
         }

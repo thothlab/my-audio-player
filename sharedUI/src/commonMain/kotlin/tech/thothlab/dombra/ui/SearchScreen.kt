@@ -21,11 +21,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -51,6 +46,8 @@ import tech.thothlab.dombra.domain.model.Artist
 import tech.thothlab.dombra.domain.model.Track
 import tech.thothlab.dombra.theme.AuroraPurple
 import tech.thothlab.dombra.theme.LocalAccentColor
+import tech.thothlab.dombra.theme.Sym
+import tech.thothlab.dombra.theme.Symbol
 import tech.thothlab.dombra.theme.auroraColors
 
 internal enum class SearchScope(val label: String) { ALL("Все"), SONGS("Песни"), ARTISTS("Исполнители"), ALBUMS("Альбомы") }
@@ -121,7 +118,7 @@ internal fun SearchScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(9.dp),
                 ) {
-                    Icon(Icons.Filled.Search, null, tint = c.textSecondary, modifier = Modifier.size(20.dp))
+                    Symbol(Sym.Search, size = 20.dp, tint = c.textSecondary)
                     Box(Modifier.weight(1f)) {
                         if (query.isEmpty()) {
                             Text(
@@ -142,10 +139,11 @@ internal fun SearchScreen(
                         )
                     }
                     if (query.isNotEmpty()) {
-                        Icon(
-                            Icons.Filled.Clear, "очистить",
+                        Symbol(
+                            Sym.Cancel,
+                            modifier = Modifier.clickable { state.query = "" },
+                            size = 19.dp,
                             tint = c.textSecondary,
-                            modifier = Modifier.size(19.dp).clickable { state.query = "" },
                         )
                     }
                 }
@@ -277,6 +275,6 @@ private fun GroupResultRow(title: String, subtitle: String, gradient: Brush, cir
             Text(title, style = TextStyle(fontSize = 14.5.sp, fontWeight = FontWeight.Medium), color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(subtitle, style = TextStyle(fontSize = 12.sp), color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = c.textFaint)
+        Symbol(Sym.ChevronRight, size = 20.dp, tint = c.textFaint)
     }
 }

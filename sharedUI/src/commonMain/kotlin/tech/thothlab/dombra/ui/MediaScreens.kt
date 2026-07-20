@@ -1,7 +1,6 @@
 package tech.thothlab.dombra.ui
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,25 +19,9 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
-import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.filled.Album
-import androidx.compose.material.icons.filled.AddCircle
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -55,17 +38,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import dombra.sharedui.generated.resources.Res
-import dombra.sharedui.generated.resources.dombra_icon
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import org.jetbrains.compose.resources.painterResource
 import tech.thothlab.dombra.di.AppGraph
 import tech.thothlab.dombra.domain.model.Album
 import tech.thothlab.dombra.domain.model.Artist
@@ -75,26 +54,29 @@ import tech.thothlab.dombra.domain.model.SortOrder
 import tech.thothlab.dombra.domain.model.Track
 import tech.thothlab.dombra.domain.model.sortedByOrder
 import tech.thothlab.dombra.presentation.player.PlayerState
+import tech.thothlab.dombra.theme.Sym
+import tech.thothlab.dombra.theme.Symbol
 import tech.thothlab.dombra.theme.auroraColors
 import tech.thothlab.dombra.theme.iconTileBrush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-/** Метаданные раздела «Медиатеки» — иконка, цвет плитки, заголовок и подпись (по образцу Cosmos). */
+/** Метаданные раздела «Медиатеки» — глиф (Material Symbols Rounded), цвет плитки, заголовок и подпись. */
 private data class SectionMeta(
     val title: String,
     val subtitle: String,
-    val icon: ImageVector,
+    val glyph: Char,
     val color: Color,
+    val filled: Boolean = true,
 )
 
 private fun sectionMeta(id: HomeSectionId, count: Int): SectionMeta = when (id) {
-    HomeSectionId.ALL_SONGS -> SectionMeta("Все песни", "$count песен", Icons.Filled.MusicNote, Color(0xFFB07CE8))
-    HomeSectionId.LIKED_SONGS -> SectionMeta("Любимые песни", "Ваше избранное", Icons.Filled.Favorite, Color(0xFFE0607A))
-    HomeSectionId.PLAYLISTS -> SectionMeta("Плейлисты", "Ваши плейлисты", Icons.AutoMirrored.Filled.QueueMusic, Color(0xFF63C67F))
-    HomeSectionId.ARTISTS -> SectionMeta("Исполнители", "Просмотр по исполнителям", Icons.Filled.Group, Color(0xFFB07CE8))
-    HomeSectionId.ALBUMS -> SectionMeta("Альбомы", "Просмотр по альбомам", Icons.Filled.Album, Color(0xFFEEA95C))
-    HomeSectionId.ADD_SONGS -> SectionMeta("Открыть файлы", "Импортировать музыкальные файлы", Icons.Filled.AddCircle, Color(0xFF5B9BE8))
+    HomeSectionId.ALL_SONGS -> SectionMeta("Все песни", "$count песен", Sym.MusicNote, Color(0xFFB07CE8))
+    HomeSectionId.LIKED_SONGS -> SectionMeta("Любимые песни", "Ваше избранное", Sym.Favorite, Color(0xFFE0607A))
+    HomeSectionId.PLAYLISTS -> SectionMeta("Плейлисты", "Ваши плейлисты", Sym.QueueMusic, Color(0xFF63C67F))
+    HomeSectionId.ARTISTS -> SectionMeta("Исполнители", "Просмотр по исполнителям", Sym.Group, Color(0xFFB07CE8))
+    HomeSectionId.ALBUMS -> SectionMeta("Альбомы", "Просмотр по альбомам", Sym.Album, Color(0xFFEEA95C))
+    HomeSectionId.ADD_SONGS -> SectionMeta("Открыть файлы", "Импортировать музыкальные файлы", Sym.Add, Color(0xFF5B9BE8), filled = false)
 }
 
 /** Главный экран «Медиатека»: шапка (иконка/обновить/поиск/настройки) + карточки-разделы. */
@@ -124,11 +106,7 @@ fun MediaHomeScreen(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Image(
-                    painter = painterResource(Res.drawable.dombra_icon),
-                    contentDescription = null,
-                    modifier = Modifier.size(38.dp).clip(RoundedCornerShape(10.dp)),
-                )
+                EqMark(size = 38.dp)
                 Text(
                     "Медиатека",
                     style = MaterialTheme.typography.headlineSmall,
@@ -139,11 +117,13 @@ fun MediaHomeScreen(
                     if (refreshing) {
                         CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                     } else {
-                        IconButton(onClick = onRefresh) { Icon(Icons.Filled.Refresh, "обновить") }
+                        IconButton(onClick = onRefresh) { Symbol(Sym.Refresh, size = 23.dp) }
                     }
                 }
-                IconButton(onClick = onSearch) { Icon(Icons.Filled.Search, "поиск") }
-                IconButton(onClick = onOpenSettings) { Icon(Icons.Filled.Settings, "настройки") }
+                IconButton(onClick = onSearch) { Symbol(Sym.Search, size = 23.dp) }
+                IconButton(onClick = onOpenSettings) {
+                    Symbol(Sym.Settings, size = 23.dp, tint = LocalAccentColorSafe())
+                }
             }
 
             LazyColumn(
@@ -184,7 +164,7 @@ private fun SectionCard(meta: SectionMeta, onClick: () -> Unit) {
             modifier = Modifier.padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconTile(meta.icon, meta.color, size = 54.dp, iconSize = 28.dp)
+            IconTile(meta.glyph, meta.color, size = 54.dp, iconSize = 28.dp, filled = meta.filled)
             Column(modifier = Modifier.padding(start = 14.dp).weight(1f)) {
                 Text(meta.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
@@ -195,14 +175,14 @@ private fun SectionCard(meta: SectionMeta, onClick: () -> Unit) {
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Symbol(Sym.ChevronRight, size = 20.dp, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 
-/** Градиентная скруглённая плитка-иконка (Aurora Glass: цвет секции → фиолетовый, белая иконка). */
+/** Градиентная скруглённая плитка-иконка (Aurora Glass: цвет секции → фиолетовый, белый глиф). */
 @Composable
-internal fun IconTile(icon: ImageVector, color: Color, size: Dp = 48.dp, iconSize: Dp = 24.dp) {
+internal fun IconTile(glyph: Char, color: Color, size: Dp = 48.dp, iconSize: Dp = 24.dp, filled: Boolean = true) {
     Box(
         modifier = Modifier
             .size(size)
@@ -210,7 +190,7 @@ internal fun IconTile(icon: ImageVector, color: Color, size: Dp = 48.dp, iconSiz
             .background(iconTileBrush(color)),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, null, tint = Color.White, modifier = Modifier.size(iconSize))
+        Symbol(glyph, filled = filled, size = iconSize, tint = Color.White)
     }
 }
 
@@ -223,7 +203,7 @@ internal val PlaylistTileColor = Color(0xFF63C67F)
 @Composable
 private fun MediaGroupCard(
     title: String,
-    icon: ImageVector,
+    glyph: Char,
     iconColor: Color,
     onClick: () -> Unit,
     cover: @Composable (() -> Unit)? = null,
@@ -237,7 +217,7 @@ private fun MediaGroupCard(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (cover != null) cover() else IconTile(icon, iconColor, size = 48.dp, iconSize = 24.dp)
+            if (cover != null) cover() else IconTile(glyph, iconColor, size = 48.dp, iconSize = 24.dp)
             Text(
                 title,
                 style = MaterialTheme.typography.titleMedium,
@@ -245,7 +225,7 @@ private fun MediaGroupCard(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(start = 12.dp).weight(1f),
             )
-            Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Symbol(Sym.ChevronRight, size = 20.dp, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -264,7 +244,7 @@ private fun AlbumGroupCard(graph: AppGraph, album: Album, onClick: () -> Unit) {
             coverId = id
         }
     }
-    MediaGroupCard(album.title, Icons.Filled.Album, AlbumTileColor, onClick) {
+    MediaGroupCard(album.title, Sym.Album, AlbumTileColor, onClick) {
         if (coverId != null) {
             ArtworkImage(
                 artwork = graph.artwork,
@@ -274,7 +254,7 @@ private fun AlbumGroupCard(graph: AppGraph, album: Album, onClick: () -> Unit) {
                 iconScale = 0.5f,
             )
         } else {
-            IconTile(Icons.Filled.Album, AlbumTileColor)
+            IconTile(Sym.Album, AlbumTileColor)
         }
     }
 }
@@ -303,7 +283,7 @@ fun CollectionScreen(
             GroupListScreen("Исполнители", player, onBack, onOpenPlayer, graph) {
                 items(artists, key = { it.id }) { a: Artist ->
                     MediaGroupCard(
-                        a.name, Icons.Filled.Group, ArtistTileColor,
+                        a.name, Sym.Group, ArtistTileColor,
                         onClick = { onOpenGroup(Screen.Tracks(a.name, TrackListRef.Artist(a.id))) },
                     )
                 }
@@ -324,7 +304,7 @@ fun CollectionScreen(
             GroupListScreen("Плейлисты", player, onBack, onOpenPlayer, graph) {
                 items(playlists, key = { it.id }) { pl: Playlist ->
                     MediaGroupCard(
-                        pl.title, Icons.AutoMirrored.Filled.QueueMusic, PlaylistTileColor,
+                        pl.title, Sym.QueueMusic, PlaylistTileColor,
                         onClick = { onOpenGroup(Screen.Tracks(pl.title, TrackListRef.Playlist(pl.id))) },
                     )
                 }
@@ -392,7 +372,7 @@ private fun TrackListScreen(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "назад") }
+                IconButton(onClick = onBack) { Symbol(Sym.ChevronLeft, size = 28.dp, tint = MaterialTheme.colorScheme.onSurface) }
                 Text(
                     title,
                     style = MaterialTheme.typography.headlineSmall,
@@ -455,11 +435,11 @@ private fun SortShufflePill(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onShuffle) {
-                Icon(Icons.Filled.Shuffle, "в случайном порядке", tint = accent)
+                Symbol(Sym.Shuffle, size = 20.dp, tint = accent)
             }
             Box {
                 IconButton(onClick = { menuOpen = true }) {
-                    Icon(Icons.AutoMirrored.Filled.Sort, "сортировка", tint = accent)
+                    Symbol(Sym.SwapVert, size = 20.dp, tint = accent)
                 }
                 DropdownMenu(
                     expanded = menuOpen,
@@ -487,7 +467,7 @@ private fun SortShufflePill(
                             },
                             onClick = { onPick(o); menuOpen = false },
                             trailingIcon = {
-                                if (selected) Icon(Icons.Filled.Check, null, tint = accent)
+                                if (selected) Symbol(Sym.Check, size = 20.dp, tint = accent)
                             },
                         )
                     }
@@ -540,7 +520,7 @@ private fun CollectionHeader(title: String, onBack: () -> Unit) {
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "назад") }
+        IconButton(onClick = onBack) { Symbol(Sym.ChevronLeft, size = 28.dp, tint = MaterialTheme.colorScheme.onSurface) }
         Text(title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(start = 4.dp))
     }
 }

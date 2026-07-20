@@ -18,10 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -41,6 +38,8 @@ import dombra.sharedui.generated.resources.Res
 import dombra.sharedui.generated.resources.dombra_icon
 import org.jetbrains.compose.resources.painterResource
 import tech.thothlab.dombra.theme.LocalAccentColor
+import tech.thothlab.dombra.theme.Sym
+import tech.thothlab.dombra.theme.Symbol
 
 /**
  * Простой онбординг первого запуска (PRD-03 T01): приветствие → подключение источника.
@@ -97,11 +96,10 @@ fun OnboardingScreen(
                     modifier = Modifier.size(100.dp),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Filled.Folder,
-                            contentDescription = null,
+                        Symbol(
+                            Sym.FolderOpen,
+                            size = 52.dp,
                             tint = MaterialTheme.colorScheme.surface,
-                            modifier = Modifier.size(52.dp),
                         )
                     }
                 }
@@ -130,7 +128,7 @@ fun OnboardingScreen(
             if (step == 1 && onPickFolder != null) {
                 Spacer(Modifier.height(28.dp))
                 OutlinedButton(onClick = onPickFolder) {
-                    Icon(Icons.Filled.Folder, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Symbol(Sym.Folder, size = 18.dp)
                     Spacer(Modifier.width(8.dp))
                     Text("Выбрать папку")
                 }

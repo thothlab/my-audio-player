@@ -19,12 +19,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Dns
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -36,13 +30,21 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import tech.thothlab.dombra.di.AppGraph
 import tech.thothlab.dombra.domain.model.AccentColor
 import tech.thothlab.dombra.domain.model.AppSettings
 import tech.thothlab.dombra.domain.model.ThemeMode
+import tech.thothlab.dombra.theme.AuroraPurple
+import tech.thothlab.dombra.theme.LocalAccentColor
+import tech.thothlab.dombra.theme.Sym
+import tech.thothlab.dombra.theme.Symbol
 import tech.thothlab.dombra.theme.auroraColors
 import tech.thothlab.dombra.theme.toColor
 
@@ -64,21 +66,16 @@ fun SettingsScreen(graph: AppGraph, settings: AppSettings, onBack: () -> Unit, o
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "назад")
+                    Symbol(Sym.ChevronLeft, size = 28.dp, tint = MaterialTheme.colorScheme.onSurface)
                 }
                 Text("Настройки", style = MaterialTheme.typography.headlineSmall)
             }
 
             Text("Тема", style = MaterialTheme.typography.titleMedium)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ThemeMode.entries.forEach { mode ->
-                    FilterChip(
-                        selected = settings.theme == mode,
-                        onClick = { scope.launch { graph.settings.update { it.copy(theme = mode) } } },
-                        label = { Text(themeLabel(mode)) },
-                    )
-                }
-            }
+            ThemeSegmented(
+                selected = settings.theme,
+                onSelect = { mode -> scope.launch { graph.settings.update { it.copy(theme = mode) } } },
+            )
 
             Text("Цвет акцента", style = MaterialTheme.typography.titleMedium)
             FlowRow(
@@ -116,7 +113,7 @@ fun SettingsScreen(graph: AppGraph, settings: AppSettings, onBack: () -> Unit, o
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    IconTile(Icons.Filled.Dns, Color(0xFF5B9BE8), size = 48.dp, iconSize = 24.dp)
+                    IconTile(Sym.Dns, Color(0xFF5B9BE8), size = 48.dp, iconSize = 24.dp)
                     Column(Modifier.weight(1f)) {
                         Text("Сервер (Navidrome / Subsonic)", style = MaterialTheme.typography.bodyLarge)
                         Text(
@@ -125,7 +122,7 @@ fun SettingsScreen(graph: AppGraph, settings: AppSettings, onBack: () -> Unit, o
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Symbol(Sym.ChevronRight, size = 20.dp, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -136,4 +133,44 @@ private fun themeLabel(mode: ThemeMode): String = when (mode) {
     ThemeMode.SYSTEM -> "Системная"
     ThemeMode.LIGHT -> "Светлая"
     ThemeMode.DARK -> "Тёмная"
+}
+
+/** Сегментированный переключатель темы (Aurora Glass): выбранный сегмент — accent→фиолетовый градиент. */
+@Composable
+private fun ThemeSegmented(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
+    val c = auroraColors()
+    val accent = LocalAccentColor.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(13.dp))
+            .background(c.glassFill)
+            .border(1.dp, c.glassBorder, RoundedCornerShape(13.dp))
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        ThemeMode.entries.forEach { mode ->
+            val isSel = mode == selected
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(9.dp))
+                    .then(
+                        if (isSel) Modifier.background(Brush.linearGradient(listOf(accent, AuroraPurple)))
+                        else Modifier,
+                    )
+                    .clickable { onSelect(mode) }
+                    .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    themeLabel(mode),
+                    fontSize = 13.sp,
+                    textAlign = TextAlign.Center,
+                    fontWeight = if (isSel) FontWeight.SemiBold else FontWeight.Normal,
+                    color = if (isSel) Color.White else c.textSecondary,
+                )
+            }
+        }
+    }
 }

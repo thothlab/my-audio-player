@@ -173,17 +173,20 @@ data class EqSettings(
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
-/** Accent-палитра. Дефолт — Aurora (розовый, направление Aurora Glass). */
+/**
+ * Accent-палитра — 8 образцов из дизайн-макета (экран «Настройки · Акцент»),
+ * в точном порядке макета. Дефолт — Plum #b11491 (акцент Aurora Glass в обеих темах).
+ * Порядок и hex сверены по handoff (turn-2 §5.6 / turn-8 §6.4).
+ */
 enum class AccentColor(val hex: String, val label: String) {
-    AURORA("ff4f8b", "Aurora"),
-    VIOLET("b11491", "Violet"),
-    RED("e74c3c", "Red"),
-    BLUE("3498db", "Blue"),
-    GREEN("27ae60", "Green"),
-    ORANGE("f39c12", "Orange"),
-    PINK("e91e63", "Pink"),
-    TEAL("1abc9c", "Teal"),
-    PURPLE("9b59b6", "Purple"),
+    AURORA("ff4d7d", "Rose"),
+    VIOLET("b11491", "Plum"),
+    RED("e11d48", "Crimson"),
+    BLUE("38bdf8", "Sky"),
+    GREEN("22c55e", "Green"),
+    ORANGE("f59e0b", "Amber"),
+    TEAL("2dd4bf", "Teal"),
+    PURPLE("7c5cff", "Indigo"),
 }
 
 enum class AppLanguage(val tag: String) { SYSTEM(""), RUSSIAN("ru"), ENGLISH("en") }
@@ -206,7 +209,7 @@ data class HomeSection(
 data class AppSettings(
     val language: AppLanguage = AppLanguage.SYSTEM,
     val theme: ThemeMode = ThemeMode.DARK,
-    val accentColor: AccentColor = AccentColor.AURORA,
+    val accentColor: AccentColor = AccentColor.VIOLET,
     val homeSections: List<HomeSection> = HomeSectionId.entries.map { HomeSection(it) },
     val deletionPolicy: DeletionPolicy = DeletionPolicy.LIBRARY_ONLY,
     val dsdMode: DsdMode = DsdMode.PCM,

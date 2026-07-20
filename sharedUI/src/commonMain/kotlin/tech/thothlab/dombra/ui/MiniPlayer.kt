@@ -15,11 +15,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -39,6 +34,8 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import tech.thothlab.dombra.di.AppGraph
+import tech.thothlab.dombra.theme.Sym
+import tech.thothlab.dombra.theme.Symbol
 import tech.thothlab.dombra.theme.auroraColors
 import tech.thothlab.dombra.domain.model.Track
 import tech.thothlab.dombra.presentation.player.PlayerState
@@ -104,8 +101,8 @@ fun MiniPlayer(
             ArtworkImage(
                 artwork = graph.artwork,
                 stableId = track.stableId,
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.size(44.dp),
+                shape = RoundedCornerShape(11.dp),
+                modifier = Modifier.size(42.dp),
                 iconScale = 0.5f,
             )
             Column(modifier = Modifier.weight(1f)) {
@@ -124,13 +121,14 @@ fun MiniPlayer(
                 )
             }
             IconButton(onClick = { graph.playback.togglePlayPause() }) {
-                Icon(
-                    imageVector = if (player.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                    contentDescription = if (player.isPlaying) "пауза" else "играть",
+                Symbol(
+                    if (player.isPlaying) Sym.Pause else Sym.PlayArrow,
+                    filled = true,
+                    size = 26.dp,
                 )
             }
             IconButton(onClick = { graph.playback.next() }) {
-                Icon(Icons.Filled.SkipNext, contentDescription = "следующий")
+                Symbol(Sym.SkipNext, size = 26.dp)
             }
         }
     }

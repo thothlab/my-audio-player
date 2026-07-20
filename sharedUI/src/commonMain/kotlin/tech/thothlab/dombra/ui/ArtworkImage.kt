@@ -2,10 +2,8 @@ package tech.thothlab.dombra.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -22,6 +20,8 @@ import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import tech.thothlab.dombra.theme.Sym
+import tech.thothlab.dombra.theme.Symbol
 import tech.thothlab.dombra.domain.ports.ArtworkRepository
 
 /** Простой in-memory LRU-кэш байтов обложек (commonMain): убирает повторное чтение с диска и «моргание». */
@@ -67,7 +67,7 @@ fun ArtworkImage(
         }
     }
 
-    Box(
+    BoxWithConstraints(
         modifier
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
@@ -86,11 +86,11 @@ fun ArtworkImage(
                 contentScale = ContentScale.Crop,
             )
         } else {
-            Icon(
-                Icons.Filled.MusicNote,
-                contentDescription = null,
+            Symbol(
+                Sym.MusicNote,
+                filled = true,
+                size = maxWidth * iconScale,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                modifier = Modifier.fillMaxSize(iconScale),
             )
         }
     }

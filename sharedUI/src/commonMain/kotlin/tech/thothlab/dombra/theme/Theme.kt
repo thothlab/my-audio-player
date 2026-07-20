@@ -102,13 +102,13 @@ internal fun AppTheme(
         ThemeMode.DARK -> true
     }
     val isDarkState = remember(isDark) { mutableStateOf(isDark) }
-    // Aurora-акцент по умолчанию (pink): в светлой теме берём более насыщенный #B11491
-    // для читаемости на белом (как в макете «Светлая тема»); в тёмной — #FF4F8B.
-    val accentColor =
-        if (!isDark && accent == AccentColor.AURORA) Color(0xFFB11491) else accent.toColor()
+    // Accent Aurora Glass — единый #b11491 (Plum) по умолчанию в обеих темах (решение по макету).
+    val accentColor = accent.toColor()
+    val symbolFonts = rememberSymbolFonts()
     CompositionLocalProvider(
         LocalThemeIsDark provides isDarkState,
         LocalAccentColor provides accentColor,
+        LocalSymbolFonts provides symbolFonts,
     ) {
         val dark by isDarkState
         onThemeChanged(!dark)
@@ -117,6 +117,8 @@ internal fun AppTheme(
         val base = if (dark) DarkColorScheme else LightColorScheme
         val ink = if (dark) Color(0xFFF2F2F5) else Color(0xFF1B1620)
         val bg = if (dark) Color(0xFF0A0A12) else Color(0xFFF4F1EC)
+        // Нейтральные Aurora-поверхности вместо мёртвой Cosmos-blue палитры (Color.kt):
+        // сюда падают M3-компоненты (меню, sheets, диалоги, плейсхолдер обложки, обводки).
         val scheme = base.copy(
             primary = accentColor,
             onPrimary = Color.White,
@@ -133,6 +135,14 @@ internal fun AppTheme(
             onBackground = ink,
             onSurface = ink,
             onSurfaceVariant = ink.copy(alpha = 0.55f),
+            surfaceVariant = if (dark) Color(0xFF272230) else Color(0xFFE7E3EC),
+            outline = if (dark) Color(0x33FFFFFF) else Color(0x33000000),
+            outlineVariant = if (dark) Color(0x1FFFFFFF) else Color(0x1F000000),
+            surfaceContainerLowest = if (dark) Color(0xFF0C0A12) else Color(0xFFFFFFFF),
+            surfaceContainerLow = if (dark) Color(0xFF141019) else Color(0xFFF6F3F8),
+            surfaceContainer = if (dark) Color(0xFF17141E) else Color(0xFFF1EDF3),
+            surfaceContainerHigh = if (dark) Color(0xFF1F1B27) else Color(0xFFECE7EF),
+            surfaceContainerHighest = if (dark) Color(0xFF272230) else Color(0xFFE6E1EA),
         )
         MaterialTheme(
             colorScheme = scheme,
