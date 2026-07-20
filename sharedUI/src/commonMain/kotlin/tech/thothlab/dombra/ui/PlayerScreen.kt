@@ -8,6 +8,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -21,6 +23,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -34,7 +37,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -45,6 +48,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -55,8 +59,11 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -71,8 +78,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import tech.thothlab.dombra.di.AppGraph
+import tech.thothlab.dombra.domain.model.Playlist
 import tech.thothlab.dombra.domain.model.RepeatMode
 import tech.thothlab.dombra.domain.model.Track
 import tech.thothlab.dombra.presentation.player.PlayerState
@@ -327,36 +337,122 @@ private fun CarouselCard(
     )
 }
 
+/** Шит «Добавить в плейлист» (Ход 11): шапка с треком, «Создать плейлист» пунктиром,
+ *  список плейлистов с числом треков; тап → галочка + тост «Добавлено в …» с «Отменить». */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddToPlaylistSheet(graph: AppGraph, track: Track, onDismiss: () -> Unit) {
     val scope = rememberCoroutineScope()
+    val c = auroraColors()
+    val accent = LocalAccentColor.current
     val playlists by graph.playlists.playlists().collectAsState(initial = emptyList())
     var showCreate by remember { mutableStateOf(false) }
+    val addedIds = remember { mutableStateListOf<String>() }
+    var lastAdded by remember { mutableStateOf<Playlist?>(null) }
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.padding(bottom = 24.dp)) {
-            Text(
-                "Добавить в плейлист",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-            )
-            playlists.forEach { pl ->
-                ListItem(
-                    headlineContent = { Text(pl.title) },
-                    modifier = Modifier.clickable {
-                        scope.launch {
-                            graph.playlists.addTrack(pl.id, track.stableId)
-                            onDismiss()
-                        }
-                    },
-                )
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = c.popoverSurface) {
+        Column(Modifier.padding(bottom = 20.dp)) {
+            // Шапка: обложка трека + заголовок + «Title · Artist».
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp).padding(bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(11.dp),
+            ) {
+                ArtworkImage(graph.artwork, track.stableId, shape = RoundedCornerShape(9.dp), modifier = Modifier.size(40.dp), iconScale = 0.5f)
+                Column(Modifier.weight(1f)) {
+                    Text("Добавить в плейлист", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = c.textPrimary)
+                    Text("${track.title} · ${track.artistName}", fontSize = 12.sp, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
-            ListItem(
-                headlineContent = { Text("Создать плейлист") },
-                leadingContent = { Symbol(Sym.Add, size = 24.dp) },
-                modifier = Modifier.clickable { showCreate = true },
-            )
+            HorizontalDivider(color = c.glassBorder)
+
+            // «Создать плейлист» — пунктирная accent-плитка.
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable { showCreate = true }.padding(horizontal = 18.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(c.glassFillStrong)
+                        .drawBehind {
+                            drawRoundRect(
+                                color = accent.copy(alpha = 0.5f),
+                                cornerRadius = CornerRadius(12.dp.toPx()),
+                                style = Stroke(width = 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(9f, 6f))),
+                            )
+                        },
+                    contentAlignment = Alignment.Center,
+                ) { Symbol(Sym.Add, size = 24.dp, tint = accent) }
+                Text("Создать плейлист", fontSize = 15.5.sp, fontWeight = FontWeight.SemiBold, color = accent)
+            }
+
+            // Список плейлистов.
+            Column(Modifier.heightIn(max = 340.dp).verticalScroll(rememberScrollState())) {
+                playlists.forEach { pl ->
+                    val added = pl.id in addedIds
+                    val count by graph.playlists.playlist(pl.id).map { it?.items?.size ?: 0 }.collectAsState(initial = 0)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                scope.launch { graph.playlists.addTrack(pl.id, track.stableId) }
+                                if (pl.id !in addedIds) addedIds.add(pl.id)
+                                lastAdded = pl
+                            }
+                            .padding(horizontal = 16.dp, vertical = 9.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(13.dp),
+                    ) {
+                        IconTile(Sym.QueueMusic, PlaylistTileColor, size = 44.dp, iconSize = 22.dp)
+                        Column(Modifier.weight(1f)) {
+                            Text(pl.title, fontSize = 14.5.sp, fontWeight = FontWeight.Medium, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text("$count треков", fontSize = 12.sp, color = c.textSecondary)
+                        }
+                        if (added) {
+                            Symbol(Sym.Check, size = 24.dp, tint = accent)
+                        } else {
+                            Symbol(Sym.AddCircle, size = 24.dp, tint = c.textFaint)
+                        }
+                    }
+                }
+            }
+
+            // Тост «Добавлено в …» с отменой.
+            lastAdded?.let { pl ->
+                Row(
+                    modifier = Modifier
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color(0x2422C55E))
+                        .border(1.dp, Color(0x5222C55E), RoundedCornerShape(14.dp))
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Symbol(Sym.Check, size = 20.dp, tint = Color(0xFF4ADE80))
+                    Text("Добавлено в «${pl.title}»", fontSize = 13.sp, color = Color(0xFFBBF7D0), modifier = Modifier.weight(1f))
+                    Text(
+                        "Отменить",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
+                        modifier = Modifier.clickable {
+                            scope.launch {
+                                val pwi = graph.playlists.playlist(pl.id).first()
+                                pwi?.items?.lastOrNull { it.trackStableId == track.stableId }?.let {
+                                    graph.playlists.removeItem(pl.id, it.position)
+                                }
+                            }
+                            addedIds.remove(pl.id)
+                            lastAdded = null
+                        },
+                    )
+                }
+            }
         }
     }
 
@@ -366,12 +462,16 @@ private fun AddToPlaylistSheet(graph: AppGraph, track: Track, onDismiss: () -> U
             onDismissRequest = { showCreate = false },
             title = { Text("Новый плейлист") },
             text = {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    singleLine = true,
-                    placeholder = { Text("Название") },
-                )
+                Column {
+                    Text("Трек «${track.title}» будет добавлен сразу", color = c.textSecondary)
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        singleLine = true,
+                        placeholder = { Text("Название") },
+                    )
+                }
             },
             confirmButton = {
                 TextButton(onClick = {
