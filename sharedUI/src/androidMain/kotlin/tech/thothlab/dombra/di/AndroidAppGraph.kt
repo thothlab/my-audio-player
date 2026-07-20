@@ -32,8 +32,26 @@ import tech.thothlab.dombra.presentation.player.PlaybackController
 /**
  * Android-граф (§7.3 ТЗ). media3-движок + SAF-хранилище + Room-store + индексатор.
  * Библиотека и доступ к папке (persistable permission) переживают рестарт.
+ *
+ * ПРОЦЕСС-СИНГЛТОН: один граф на процесс, переживает пересоздание Activity
+ * (сворачивание/восстановление, поворот, смена системной темы). Иначе fresh-граф
+ * получал бы пустую очередь плеера, а media3-сессия продолжала бы играть — и в UI
+ * пропадал мини-плеер (звук есть, «сейчас играет» нет). Всё в графе на
+ * applicationContext, поэтому Activity не утекает; заодно уходит утечка Room/scope/
+ * MediaController на каждом пересоздании.
  */
+private val graphLock = Any()
+
+@Volatile private var cachedGraph: AppGraph? = null
+
 fun createAndroidAppGraph(context: Context): AppGraph {
+    cachedGraph?.let { return it }
+    return synchronized(graphLock) {
+        cachedGraph ?: buildAndroidAppGraph(context.applicationContext).also { cachedGraph = it }
+    }
+}
+
+private fun buildAndroidAppGraph(context: Context): AppGraph {
     val app = context.applicationContext
     val dispatchers = AndroidDispatchers
     val scope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
