@@ -127,16 +127,17 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
                 Spacer(Modifier.weight(1f))
             }
 
-            Spacer(Modifier.weight(1f))
-
             // Обложка-карусель: соседние обложки выглядывают слева/справа, свайп меняет трек.
+            // Область обложки — гибкая (weight): забирает свободную высоту, а карточка
+            // ограничена min(ширина·0.82, доступная высота) — на низком экране ужимается
+            // сама, а не выталкивает панель управления вниз.
             val prevId = state.queue.getOrNull(state.currentIndex - 1)?.track?.stableId
             val nextId = state.queue.getOrNull(state.currentIndex + 1)?.track?.stableId
             BoxWithConstraints(
-                modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+                modifier = Modifier.fillMaxWidth().weight(1f),
                 contentAlignment = Alignment.Center,
             ) {
-                val cardW = maxWidth * 0.80f
+                val cardW = minOf(maxWidth * 0.82f, maxHeight)
                 val stepPx = with(LocalDensity.current) { (cardW + 18.dp).toPx() }
                 SideEffect { carouselStep = stepPx }
                 if (prevId != null) CarouselCard(graph, prevId, -1, cardW, stepPx, artDrag.value)
@@ -246,7 +247,9 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
                 Text("⚠ ${err.message}", color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
             }
 
-            Spacer(Modifier.weight(1f))
+            // Небольшой фиксированный отступ снизу — панель управления держится над
+            // системной навигацией и не «схлопывается» на низких экранах.
+            Spacer(Modifier.height(16.dp))
         }
     }
 
