@@ -13,13 +13,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -64,23 +64,12 @@ fun SettingsScreen(graph: AppGraph, settings: AppSettings, onBack: () -> Unit, o
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            // Шапка выровнена по левому краю к секциям/карточке (шеврон без 48dp-отступа IconButton).
+            // Toolbar как на остальных экранах: back-IconButton + заголовок.
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Symbol(
-                    Sym.ChevronLeft,
-                    modifier = Modifier
-                        .offset(x = (-10).dp)
-                        .clip(CircleShape)
-                        .clickable(onClick = onBack)
-                        .padding(vertical = 6.dp, horizontal = 2.dp),
-                    size = 28.dp,
-                    tint = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    "Настройки",
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.padding(start = 4.dp),
-                )
+                IconButton(onClick = onBack) {
+                    Symbol(Sym.ChevronLeft, size = 28.dp, tint = MaterialTheme.colorScheme.onSurface)
+                }
+                Text("Настройки", style = MaterialTheme.typography.headlineSmall)
             }
 
             Text("Тема", style = MaterialTheme.typography.titleMedium)
