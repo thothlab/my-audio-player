@@ -94,17 +94,19 @@ fun MiniPlayer(
         border = BorderStroke(1.dp, c.barBorder),
     ) {
         Row(
+            // Внутренний отступ 12dp по горизонтали → обложка мини-плеера по левому краю
+            // совпадает с обложками списка (колонка 16 + строка 8 = 24; здесь 12 внешних + 12 = 24).
             modifier = Modifier
-                .padding(horizontal = 10.dp, vertical = 8.dp)
-                .height(52.dp),
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .height(56.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             ArtworkImage(
                 artwork = graph.artwork,
                 stableId = track.stableId,
-                shape = RoundedCornerShape(11.dp),
-                modifier = Modifier.size(42.dp),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.size(48.dp),
                 iconScale = 0.5f,
             )
             Column(modifier = Modifier.weight(1f)) {
