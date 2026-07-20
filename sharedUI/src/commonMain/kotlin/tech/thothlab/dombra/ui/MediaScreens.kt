@@ -2,6 +2,7 @@ package tech.thothlab.dombra.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -396,10 +397,12 @@ private fun TrackListScreen(
                 contentPadding = PaddingValues(bottom = if (player.currentTrack != null) 92.dp else 8.dp),
             ) {
                 items(sorted, key = { it.stableId }) { track ->
+                    val current = track.stableId == player.currentTrack?.stableId
                     TrackRow(
                         track = track,
                         artwork = graph.artwork,
-                        isCurrent = track.stableId == player.currentTrack?.stableId,
+                        isCurrent = current,
+                        isPlaying = current && player.isPlaying,
                         onClick = { graph.playback.playNow(track, sorted) },
                     )
                 }
@@ -525,20 +528,33 @@ private fun CollectionHeader(title: String, onBack: () -> Unit) {
     }
 }
 
-/** Ряд трека: миниатюра + название (accent если текущий) + исполнитель. */
+/** Ряд трека: миниатюра + название (accent если текущий) + исполнитель. Текущий — стеклянная
+ *  подсветка (по макету) + анимированный индикатор «звучания» справа. */
 @Composable
 internal fun TrackRow(
     track: Track,
     artwork: tech.thothlab.dombra.domain.ports.ArtworkRepository,
     isCurrent: Boolean,
+    isPlaying: Boolean,
     onClick: () -> Unit,
 ) {
     val accent = LocalAccentColorSafe()
+    val c = auroraColors()
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .then(
+                if (isCurrent) {
+                    Modifier
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(c.glassFillStrong)
+                        .border(1.dp, accent.copy(alpha = 0.18f), RoundedCornerShape(14.dp))
+                } else {
+                    Modifier
+                },
+            )
             .clickable(onClick = onClick)
-            .padding(vertical = 6.dp),
+            .padding(horizontal = if (isCurrent) 8.dp else 0.dp, vertical = if (isCurrent) 8.dp else 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -554,6 +570,7 @@ internal fun TrackRow(
                 text = track.title,
                 style = MaterialTheme.typography.bodyLarge,
                 color = if (isCurrent) accent else MaterialTheme.colorScheme.onSurface,
+                fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -565,6 +582,7 @@ internal fun TrackRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
+        if (isCurrent) PlayingBars(color = accent, playing = isPlaying)
     }
 }
 

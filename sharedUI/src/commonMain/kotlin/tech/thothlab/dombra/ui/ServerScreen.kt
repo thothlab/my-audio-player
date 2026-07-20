@@ -338,6 +338,7 @@ fun RemoteAlbumScreen(graph: AppGraph, albumId: String, title: String, onBack: (
                         track = t,
                         artwork = graph.artwork,
                         isCurrent = false,
+                        isPlaying = false,
                         onClick = { graph.playback.playNow(t, tracks) },
                     )
                 }

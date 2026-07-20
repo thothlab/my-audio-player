@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -14,8 +15,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -25,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
@@ -120,15 +122,25 @@ fun MiniPlayer(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            IconButton(onClick = { graph.playback.togglePlayPause() }) {
+            // Контролы вплотную друг к другу (как в макете), а не разнесённые IconButton'ы.
+            Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
                 Symbol(
                     if (player.isPlaying) Sym.Pause else Sym.PlayArrow,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .clickable { graph.playback.togglePlayPause() }
+                        .padding(7.dp),
                     filled = true,
                     size = 26.dp,
                 )
-            }
-            IconButton(onClick = { graph.playback.next() }) {
-                Symbol(Sym.SkipNext, size = 26.dp)
+                Symbol(
+                    Sym.SkipNext,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .clickable { graph.playback.next() }
+                        .padding(7.dp),
+                    size = 26.dp,
+                )
             }
         }
     }
