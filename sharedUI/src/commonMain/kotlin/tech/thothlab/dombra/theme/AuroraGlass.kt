@@ -60,7 +60,11 @@ val DarkAuroraColors = AuroraColors(
     glassBorder = Color(0x1AFFFFFF),      // white .10
     glassFillStrong = Color(0x14FFFFFF),  // white .08
     glassBorderStrong = Color(0x1FFFFFFF),// white .12
-    barSurface = Color(0x17FFFFFF),       // white .09
+    // Плавающие бары — МАТОВЫЕ непрозрачные: backdrop-blur (glassmorphism из макета)
+    // непереносим в CMP (Android <12 no-op), поэтому «фрост» аппроксимируем непрозрачным
+    // цветом = композит фона #0A0A12 с белым ~10% (то, как выглядело бы стекло над фоном).
+    // Иначе низкая alpha просто просвечивает контент списка под мини-плеером.
+    barSurface = Color(0xFF23222B),       // ≈ #0A0A12 + white .10 (opaque)
     barBorder = Color(0x24FFFFFF),        // white .14
     popoverSurface = Color(0xDB16141E),   // #16141E .86
     popoverBorder = Color(0x24FFFFFF),    // white .14
@@ -76,7 +80,8 @@ val LightAuroraColors = AuroraColors(
     glassBorder = InkLight.copy(alpha = 0.07f),
     glassFillStrong = Color.White.copy(alpha = 0.72f),
     glassBorderStrong = InkLight.copy(alpha = 0.08f),
-    barSurface = Color.White.copy(alpha = 0.82f),
+    // Матовый непрозрачный бар (аппроксимация стекла ≈ фон #F4F1EC + белый ~78%).
+    barSurface = Color(0xFFFCFBFC),
     barBorder = InkLight.copy(alpha = 0.08f),
     popoverSurface = Color(0xFFF5F3F6),
     popoverBorder = InkLight.copy(alpha = 0.08f),
