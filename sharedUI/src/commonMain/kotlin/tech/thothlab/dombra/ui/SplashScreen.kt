@@ -6,45 +6,102 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dombra.sharedui.generated.resources.Res
-import dombra.sharedui.generated.resources.dombra_icon
+import dombra.sharedui.generated.resources.dombra_gold
 import org.jetbrains.compose.resources.painterResource
+import kotlin.math.sqrt
 
-/** Брендовый сплеш-экран: иконка-домбра + название на aurora-фоне. */
+/** Золото знака и текста на сплеше. */
+private val SplashGold = Color(0xFFE9C877)
+
+/**
+ * Брендовый сплеш (Ход 9): сплошная «слива» радиальным градиентом (центр светлее,
+ * края темнее) + золотое гало, по центру — детальная золотая домбра, ниже —
+ * «DOMBRA» и подпись, у нижнего края — спиннер.
+ */
 @Composable
 fun SplashScreen() {
-    Box(Modifier.fillMaxSize()) {
-        CosmosBackground(CosmosScreen.Secondary)
+    Box(
+        Modifier
+            .fillMaxSize()
+            .drawBehind {
+                // Слива: radial-gradient(circle at 50% 46%, #3d1036, #2a0b2b 42%, #160619).
+                val center = Offset(size.width * 0.5f, size.height * 0.46f)
+                val radius = sqrt(
+                    (size.width * 0.5f) * (size.width * 0.5f) +
+                        (size.height * 0.54f) * (size.height * 0.54f),
+                )
+                drawRect(
+                    Brush.radialGradient(
+                        0.0f to Color(0xFF3D1036),
+                        0.42f to Color(0xFF2A0B2B),
+                        1.0f to Color(0xFF160619),
+                        center = center,
+                        radius = radius,
+                    ),
+                )
+                // Золотое гало за знаком.
+                drawRect(
+                    Brush.radialGradient(
+                        0.0f to SplashGold.copy(alpha = 0.20f),
+                        0.66f to Color.Transparent,
+                        center = center,
+                        radius = size.width * 0.55f,
+                    ),
+                )
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Image(
+            painter = painterResource(Res.drawable.dombra_gold),
+            contentDescription = null,
+            modifier = Modifier.size(186.dp),
+        )
+
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 26.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
         ) {
-            Image(
-                painter = painterResource(Res.drawable.dombra_icon),
-                contentDescription = null,
-                modifier = Modifier
-                    .size(128.dp)
-                    .shadow(18.dp, RoundedCornerShape(28.dp))
-                    .clip(RoundedCornerShape(28.dp)),
-            )
-            Spacer(Modifier.size(24.dp))
             Text(
-                text = "Dombra",
-                style = MaterialTheme.typography.displaySmall,
+                "DOMBRA",
+                color = SplashGold,
+                fontSize = 26.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
+                letterSpacing = 3.6.sp,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "МУЗЫКА БЕЗ ПОТЕРЬ",
+                color = SplashGold.copy(alpha = 0.5f),
+                fontSize = 11.sp,
+                letterSpacing = 3.0.sp,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(22.dp))
+            CircularProgressIndicator(
+                modifier = Modifier.size(26.dp),
+                color = SplashGold,
+                trackColor = SplashGold.copy(alpha = 0.28f),
+                strokeWidth = 2.5.dp,
             )
         }
     }
