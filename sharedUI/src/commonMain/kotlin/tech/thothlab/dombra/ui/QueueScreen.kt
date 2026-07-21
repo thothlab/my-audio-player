@@ -1,5 +1,9 @@
 package tech.thothlab.dombra.ui
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,6 +16,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -34,6 +39,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -45,6 +51,9 @@ import tech.thothlab.dombra.theme.LocalAccentColor
 import tech.thothlab.dombra.theme.Sym
 import tech.thothlab.dombra.theme.Symbol
 import tech.thothlab.dombra.theme.auroraColors
+
+/** Фикс. высота строки «Далее» — чтобы расчёт зазора при реордере был точным. */
+private val UP_NEXT_ROW_HEIGHT = 56.dp
 
 /**
  * Экран очереди (макет turn-2 · F5): карточка «Сейчас играет» + список «Далее».
@@ -66,7 +75,7 @@ fun QueueScreen(graph: AppGraph, onBack: () -> Unit) {
     // Состояние перетаскивания строки «Далее» (индекс в upNext + накопленный сдвиг).
     var dragFrom by remember { mutableStateOf<Int?>(null) }
     var dragOffset by remember { mutableStateOf(0f) }
-    val rowHeightPx = with(LocalDensity.current) { 58.dp.toPx() }
+    val rowHeightPx = with(LocalDensity.current) { UP_NEXT_ROW_HEIGHT.toPx() }
 
     Box(Modifier.fillMaxSize()) {
         CosmosBackground(CosmosScreen.Player)
@@ -120,11 +129,29 @@ fun QueueScreen(graph: AppGraph, onBack: () -> Unit) {
                 if (upNext.isNotEmpty()) {
                     item(key = "next-label") { QueueLabel(strings.upNext, c.textTertiary) }
                     itemsIndexed(upNext, key = { _, it -> it.entryId }) { i, qi ->
+                        val from = dragFrom
+                        // Целевая позиция и сдвиг соседей: строки между from и target раздвигаются,
+                        // открывая зазор в целевой позиции (сдвиг = высоте строки → приземление без прыжка).
+                        val target = from?.let { (it + (dragOffset / rowHeightPx).roundToInt()).coerceIn(0, upNext.lastIndex) }
+                        val dragging = from == i
+                        val shift = when {
+                            from == null || target == null || dragging -> 0f
+                            from < i && i <= target -> -rowHeightPx
+                            from > i && i >= target -> rowHeightPx
+                            else -> 0f
+                        }
+                        // Плавное раздвижение соседей (spring во время перетаскивания); на отпускании
+                        // (from == null) — snap, чтобы мгновенно совпасть с новой раскладкой без прыжка.
+                        val animShift by animateFloatAsState(
+                            targetValue = shift,
+                            animationSpec = if (from == null) snap() else spring(stiffness = Spring.StiffnessMediumLow),
+                            label = "reorder-shift",
+                        )
                         UpNextRow(
                             graph = graph,
                             item = qi,
-                            dragging = dragFrom == i,
-                            offsetY = if (dragFrom == i) dragOffset else 0f,
+                            dragging = dragging,
+                            offsetY = if (dragging) dragOffset else animShift,
                             onTap = { graph.playback.jumpTo(baseIndex + 1 + i) },
                             onDragStart = { dragFrom = i; dragOffset = 0f },
                             onDrag = { dragOffset += it },
@@ -208,6 +235,8 @@ private fun UpNextRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .height(UP_NEXT_ROW_HEIGHT)
+            .zIndex(if (dragging) 1f else 0f)
             .graphicsLayer {
                 translationY = offsetY
                 if (dragging) shadowElevation = 8.dp.toPx()
