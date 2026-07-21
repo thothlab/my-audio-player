@@ -443,7 +443,12 @@ private fun TrackListScreen(
                     )
                     SortShufflePill(
                         order = order,
-                        onShuffle = { if (sorted.isNotEmpty()) graph.playback.shufflePlay(sorted) },
+                        shuffled = player.shuffled,
+                        // Тап: не перемешано → перемешать эти треки; перемешано → вернуть исходный порядок.
+                        onShuffle = {
+                            if (player.shuffled) graph.playback.toggleShuffle()
+                            else if (sorted.isNotEmpty()) graph.playback.shufflePlay(sorted)
+                        },
                         onPick = { picked ->
                             scope.launch {
                                 graph.settings.update { it.copy(sortOrders = it.sortOrders + (collectionKey to picked)) }
@@ -602,10 +607,11 @@ private fun DetailHero(
     }
 }
 
-/** Пилюля справа в шапке списка: кнопка shuffle-play + меню сортировки (по образцу Cosmos). */
+/** Пилюля справа в шапке списка: тумблер «Перемешать» (подсвечен, когда включён) + меню сортировки. */
 @Composable
 private fun SortShufflePill(
     order: SortOrder,
+    shuffled: Boolean,
     onShuffle: () -> Unit,
     onPick: (SortOrder) -> Unit,
 ) {
@@ -621,7 +627,15 @@ private fun SortShufflePill(
         border = BorderStroke(1.dp, c.glassBorderStrong),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onShuffle) {
+            // Тумблер перемешивания: залит accent-washem, когда включён → повторный тап выключает.
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .then(if (shuffled) Modifier.background(accent.copy(alpha = 0.22f)) else Modifier)
+                    .clickable(onClick = onShuffle),
+                contentAlignment = Alignment.Center,
+            ) {
                 Symbol(Sym.Shuffle, size = 20.dp, tint = accent)
             }
             // Разделитель по макету (1px, высота 16).
