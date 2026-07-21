@@ -308,13 +308,6 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit, onOpenLyrics: (() -> Unit)
                         modifier = Modifier.clip(CircleShape).clickable(onClick = openQueue).padding(8.dp),
                     )
                 }
-                // «Текст» — вход в караоке-экран (гейтится настройкой showLyricsButton).
-                onOpenLyrics?.let { openLyrics ->
-                    Symbol(
-                        Sym.Lyrics, size = 22.dp, tint = subtle,
-                        modifier = Modifier.clip(CircleShape).clickable(onClick = openLyrics).padding(8.dp),
-                    )
-                }
             }
 
             // Небольшой фиксированный отступ снизу — панель управления держится над
