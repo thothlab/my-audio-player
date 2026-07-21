@@ -82,7 +82,7 @@ private fun buildAndroidAppGraph(context: Context): AppGraph {
         random = Random.Default,
     )
     val libraryIndexer = DefaultLibraryIndexer(storage, store, artworkRepo, clock, dispatchers)
-    val lyricsRepo = DefaultLyricsRepository(store, storage, clock)
+    val lyricsRepo = DefaultLyricsRepository(store, storage, clock, dispatchers)
     val libraryRepo = DefaultLibraryRepository(store)
     val playlistRepo = DefaultPlaylistRepository(store, clock, RandomIdGenerator())
     val httpClient = tech.thothlab.dombra.platform.createAndroidHttpClient()

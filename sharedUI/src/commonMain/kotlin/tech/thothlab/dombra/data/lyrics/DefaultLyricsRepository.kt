@@ -1,6 +1,8 @@
 package tech.thothlab.dombra.data.lyrics
 
+import kotlinx.coroutines.withContext
 import tech.thothlab.dombra.core.Clock
+import tech.thothlab.dombra.core.DispatcherProvider
 import tech.thothlab.dombra.core.DombraResult
 import tech.thothlab.dombra.core.Log
 import tech.thothlab.dombra.data.metadata.MetadataParser
@@ -25,6 +27,7 @@ class DefaultLyricsRepository(
     private val store: LibraryStore,
     private val storage: StorageProvider,
     private val clock: Clock,
+    private val dispatchers: DispatcherProvider,
     private val maxFullReadBytes: Long = 128L * 1024 * 1024,
 ) : LyricsRepository {
 
@@ -50,10 +53,15 @@ class DefaultLyricsRepository(
         store.deleteLyrics(trackStableId)
     }
 
-    /** Дочитывает встроенный текст, повторяя head/tail/full-логику индексатора. */
-    private suspend fun readEmbedded(track: Track): String? {
+    /**
+     * Дочитывает встроенный текст, повторяя head/tail/full-логику индексатора.
+     * Всё тело — на IO: `readBytes` уже переключается на IO сам, но парсинг
+     * ([MetadataParser.parse]) — CPU-bound (на полном буфере для m4a-без-moov/DSF),
+     * а вызывается из main (LaunchedEffect). Без этого — рывок/ANR на крупных файлах.
+     */
+    private suspend fun readEmbedded(track: Track): String? = withContext(dispatchers.io) {
         val ref = SourceRef(uri = track.sourceUri, displayName = track.sourceDisplayName)
-        val stat = storage.stat(ref) ?: return null
+        val stat = storage.stat(ref) ?: return@withContext null
         val chunk = StableId.CHUNK.toLong()
         val head = storage.readBytes(ref, 0, chunk)
         val tail = if (stat.size > StableId.CHUNK) {
@@ -62,6 +70,6 @@ class DefaultLyricsRepository(
         val full = if (MetadataParser.needsFullRead(head) && stat.size <= maxFullReadBytes) {
             storage.readBytes(ref)
         } else null
-        return MetadataParser.parse(head, tail, stat.size, full)?.embeddedLyrics
+        MetadataParser.parse(head, tail, stat.size, full)?.embeddedLyrics
     }
 }
