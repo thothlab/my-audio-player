@@ -229,7 +229,7 @@ data class AppSettings(
     /** Экран «Альбомы»: сортировка, направление (по убыванию) и вид (список/плитка). */
     val albumSort: AlbumSort = AlbumSort.TITLE,
     val albumSortDesc: Boolean = false,
-    val albumGridView: Boolean = false,
+    val albumGridView: Boolean = true,
 ) {
     /** Толерантность к новым секциям: недостающие добавляются в конец видимыми. */
     fun withAllSections(): AppSettings {
