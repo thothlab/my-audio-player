@@ -139,9 +139,21 @@ private fun MainShell(
 
         Screen.Player -> {
             if (player.currentTrack != null) {
-                PlayerScreen(graph, onBack = { nav.pop() })
+                PlayerScreen(
+                    graph,
+                    onBack = { nav.pop() },
+                    onOpenLyrics = if (settings.showLyricsButton) ({ nav.push(Screen.Lyrics) }) else null,
+                )
             } else {
                 // Трек исчез (очередь очищена) — вернуться из плеера.
+                LaunchedEffect(Unit) { nav.pop() }
+            }
+        }
+
+        Screen.Lyrics -> {
+            if (player.currentTrack != null) {
+                LyricsScreen(graph, onBack = { nav.pop() })
+            } else {
                 LaunchedEffect(Unit) { nav.pop() }
             }
         }

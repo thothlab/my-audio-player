@@ -7,9 +7,11 @@ import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.NextRenderersFactory
+import tech.thothlab.dombra.R
 
 /**
  * Хост воспроизведения (§5.14 фон/локскрин). Держит единственный ExoPlayer с
@@ -37,6 +39,12 @@ class PlaybackService : MediaSessionService() {
             .setHandleAudioBecomingNoisy(true) // пауза при выдёргивании наушников
             .build()
         mediaSession = MediaSession.Builder(this, player).build()
+        // Брендовый значок в статус-баре вместо дефолтного медиа-глифа media3.
+        setMediaNotificationProvider(
+            DefaultMediaNotificationProvider.Builder(this).build().apply {
+                setSmallIcon(R.drawable.ic_stat_dombra)
+            },
+        )
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession

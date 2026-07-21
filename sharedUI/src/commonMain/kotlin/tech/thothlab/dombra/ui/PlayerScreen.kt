@@ -100,7 +100,7 @@ import tech.thothlab.dombra.theme.LocalThemeIsDark
  * кнопки «в избранное»/«в плейлист», тонкий accent seek-бар, матовые контролы.
  */
 @Composable
-fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
+fun PlayerScreen(graph: AppGraph, onBack: () -> Unit, onOpenLyrics: (() -> Unit)? = null) {
     val state: PlayerState by graph.playback.state.collectAsState()
     val track = state.currentTrack
     val accent = LocalAccentColor.current
@@ -291,6 +291,19 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
             state.error?.let { err ->
                 Spacer(Modifier.height(12.dp))
                 Text("⚠ ${err.message}", color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
+            }
+
+            // «Текст» — вход в караоке-экран (гейтится настройкой showLyricsButton).
+            onOpenLyrics?.let { openLyrics ->
+                Spacer(Modifier.height(14.dp))
+                Row(
+                    modifier = Modifier.clickable(onClick = openLyrics).padding(horizontal = 14.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Symbol(Sym.Lyrics, size = 18.dp, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(strings.lyrics, fontSize = 12.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
 
             // Небольшой фиксированный отступ снизу — панель управления держится над

@@ -27,6 +27,9 @@ sealed interface Screen {
 
     /** Экран эквалайзера (полосы + предусиление). */
     data object Equalizer : Screen
+
+    /** Экран текста песни (синхронный караоке-скролл / простой текст). */
+    data object Lyrics : Screen
 }
 
 /** Источник списка треков для [Screen.Tracks]. */

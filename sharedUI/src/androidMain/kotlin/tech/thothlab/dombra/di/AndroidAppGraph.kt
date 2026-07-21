@@ -13,6 +13,7 @@ import tech.thothlab.dombra.core.Log
 import tech.thothlab.dombra.core.RandomIdGenerator
 import tech.thothlab.dombra.core.SystemClock
 import tech.thothlab.dombra.data.indexer.DefaultLibraryIndexer
+import tech.thothlab.dombra.data.lyrics.DefaultLyricsRepository
 import tech.thothlab.dombra.data.remote.subsonic.DefaultRemoteSourceRepository
 import tech.thothlab.dombra.data.repo.DefaultLibraryRepository
 import tech.thothlab.dombra.data.repo.DefaultPlaylistRepository
@@ -81,6 +82,7 @@ private fun buildAndroidAppGraph(context: Context): AppGraph {
         random = Random.Default,
     )
     val libraryIndexer = DefaultLibraryIndexer(storage, store, artworkRepo, clock, dispatchers)
+    val lyricsRepo = DefaultLyricsRepository(store, storage, clock)
     val libraryRepo = DefaultLibraryRepository(store)
     val playlistRepo = DefaultPlaylistRepository(store, clock, RandomIdGenerator())
     val httpClient = tech.thothlab.dombra.platform.createAndroidHttpClient()
@@ -94,6 +96,7 @@ private fun buildAndroidAppGraph(context: Context): AppGraph {
         override val artwork = artworkRepo
         override val settings = settingsRepo
         override val remote = remoteRepo
+        override val lyrics = lyricsRepo
 
         override suspend fun importTree(treeUri: String, displayName: String) {
             val log = Log.withTag("Import")

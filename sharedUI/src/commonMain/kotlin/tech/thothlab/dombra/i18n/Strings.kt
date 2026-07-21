@@ -76,6 +76,13 @@ class Strings(lang: AppLanguage) {
     fun trackWillBeAdded(title: String) =
         if (en) "Track «$title» will be added right away" else "Трек «$title» будет добавлен сразу"
 
+    // Текст песни
+    val lyrics = t("Текст", "Lyrics")
+    val lyricsTitle = t("ТЕКСТ ПЕСНИ", "LYRICS")
+    val lyricsLoading = t("Загрузка текста…", "Loading lyrics…")
+    val noLyricsTitle = t("Нет текста", "No lyrics")
+    val noLyricsBody = t("Для этого трека текст не найден", "Lyrics not found for this track")
+
     // Эквалайзер
     val eqFlat = t("Плоский", "Flat")
     val eqRock = t("Рок", "Rock")

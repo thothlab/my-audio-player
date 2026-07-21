@@ -4,6 +4,7 @@ import tech.thothlab.dombra.data.remote.subsonic.RemoteSourceRepository
 import tech.thothlab.dombra.domain.ports.ArtworkRepository
 import tech.thothlab.dombra.domain.ports.LibraryIndexer
 import tech.thothlab.dombra.domain.ports.LibraryRepository
+import tech.thothlab.dombra.domain.ports.LyricsRepository
 import tech.thothlab.dombra.domain.ports.PlaylistRepository
 import tech.thothlab.dombra.domain.ports.SettingsRepository
 import tech.thothlab.dombra.presentation.player.PlaybackController
@@ -21,6 +22,7 @@ interface AppGraph {
     val artwork: ArtworkRepository
     val settings: SettingsRepository
     val remote: RemoteSourceRepository
+    val lyrics: LyricsRepository
 
     /** Проиндексировать выбранную папку (SAF-дерево / каталог) и закрепить доступ. */
     suspend fun importTree(treeUri: String, displayName: String)
