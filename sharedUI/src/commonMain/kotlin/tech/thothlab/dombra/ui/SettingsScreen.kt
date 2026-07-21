@@ -53,6 +53,7 @@ import tech.thothlab.dombra.domain.model.AppLanguage
 import tech.thothlab.dombra.domain.model.AppSettings
 import tech.thothlab.dombra.domain.model.ReplayGainMode
 import tech.thothlab.dombra.domain.model.ThemeMode
+import tech.thothlab.dombra.i18n.LocalStrings
 import tech.thothlab.dombra.theme.AuroraPurple
 import tech.thothlab.dombra.theme.LocalAccentColor
 import tech.thothlab.dombra.theme.Sym
@@ -73,6 +74,7 @@ fun SettingsScreen(
     val scope = rememberCoroutineScope()
     val remoteConfig by graph.remote.config.collectAsState()
     val c = auroraColors()
+    val strings = LocalStrings.current
     var showLangPicker by remember { mutableStateOf(false) }
     fun update(block: (AppSettings) -> AppSettings) { scope.launch { graph.settings.update(block) } }
 
@@ -91,16 +93,16 @@ fun SettingsScreen(
                 IconButton(onClick = onBack) {
                     Symbol(Sym.ChevronLeft, size = 28.dp, tint = MaterialTheme.colorScheme.onSurface)
                 }
-                Text("Настройки", style = MaterialTheme.typography.headlineSmall)
+                Text(strings.settings, style = MaterialTheme.typography.headlineSmall)
             }
 
-            Text("Тема", style = MaterialTheme.typography.titleMedium)
+            Text(strings.theme, style = MaterialTheme.typography.titleMedium)
             ThemeSegmented(
                 selected = settings.theme,
                 onSelect = { mode -> scope.launch { graph.settings.update { it.copy(theme = mode) } } },
             )
 
-            Text("Цвет акцента", style = MaterialTheme.typography.titleMedium)
+            Text(strings.accentColor, style = MaterialTheme.typography.titleMedium)
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -122,7 +124,7 @@ fun SettingsScreen(
                 }
             }
 
-            Text("Звук", style = MaterialTheme.typography.titleMedium)
+            Text(strings.sound, style = MaterialTheme.typography.titleMedium)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -135,12 +137,12 @@ fun SettingsScreen(
                 }
                 HorizontalDivider(color = c.glassBorder)
                 SoundRow(
-                    "Эквалайзер",
+                    strings.equalizer,
                     checked = settings.equalizerEnabled,
                     onRowClick = onOpenEqualizer,
                 ) { on -> update { it.copy(equalizerEnabled = on) } }
                 HorizontalDivider(color = c.glassBorder)
-                SoundRow("Sleep-таймер", checked = settings.showSleepTimerButton) { on ->
+                SoundRow(strings.sleepTimer, checked = settings.showSleepTimerButton) { on ->
                     update { it.copy(showSleepTimerButton = on) }
                 }
             }
@@ -149,12 +151,16 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { showLangPicker = true }.padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Язык", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                Text(languageLabel(settings.language), color = c.textSecondary, style = MaterialTheme.typography.bodyMedium)
+                Text(strings.language, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Text(
+                    if (settings.language == AppLanguage.ENGLISH) strings.english else strings.russian,
+                    color = c.textSecondary,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
                 Symbol(Sym.ChevronRight, size = 19.dp, tint = c.textSecondary, modifier = Modifier.padding(start = 4.dp))
             }
 
-            Text("Источники", style = MaterialTheme.typography.titleMedium)
+            Text(strings.sources, style = MaterialTheme.typography.titleMedium)
             Surface(
                 onClick = onOpenServer,
                 shape = RoundedCornerShape(16.dp),
@@ -169,9 +175,9 @@ fun SettingsScreen(
                 ) {
                     IconTile(Sym.Dns, Color(0xFF5B9BE8), size = 48.dp, iconSize = 24.dp)
                     Column(Modifier.weight(1f)) {
-                        Text("Сервер (Navidrome / Subsonic)", style = MaterialTheme.typography.bodyLarge)
+                        Text(strings.serverCard, style = MaterialTheme.typography.bodyLarge)
                         Text(
-                            remoteConfig?.let { "Подключён: ${it.label}" } ?: "Не подключён",
+                            remoteConfig?.let { strings.connectedTo(it.label) } ?: strings.notConnected,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -189,18 +195,6 @@ fun SettingsScreen(
             onDismiss = { showLangPicker = false },
         )
     }
-}
-
-private fun themeLabel(mode: ThemeMode): String = when (mode) {
-    ThemeMode.SYSTEM -> "Системная"
-    ThemeMode.LIGHT -> "Светлая"
-    ThemeMode.DARK -> "Тёмная"
-}
-
-/** Язык по умолчанию — Русский (SYSTEM трактуем как Русский для отображения). */
-private fun languageLabel(lang: AppLanguage): String = when (lang) {
-    AppLanguage.ENGLISH -> "Английский"
-    else -> "Русский"
 }
 
 /** Строка секции «Звук»: подпись + переключатель; опц. тап по строке (для эквалайзера). */
@@ -233,13 +227,14 @@ private fun SoundRow(
 private fun LanguagePicker(current: AppLanguage, onSelect: (AppLanguage) -> Unit, onDismiss: () -> Unit) {
     val c = auroraColors()
     val accent = LocalAccentColor.current
+    val strings = LocalStrings.current
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = c.popoverSurface,
-        title = { Text("Язык", color = c.textPrimary) },
+        title = { Text(strings.language, color = c.textPrimary) },
         text = {
             Column {
-                listOf(AppLanguage.RUSSIAN to "Русский", AppLanguage.ENGLISH to "Английский").forEach { (lang, label) ->
+                listOf(AppLanguage.RUSSIAN to strings.russian, AppLanguage.ENGLISH to strings.english).forEach { (lang, label) ->
                     val sel = lang == current || (current == AppLanguage.SYSTEM && lang == AppLanguage.RUSSIAN)
                     Row(
                         modifier = Modifier.fillMaxWidth().clickable { onSelect(lang) }.padding(vertical = 12.dp),
@@ -252,7 +247,7 @@ private fun LanguagePicker(current: AppLanguage, onSelect: (AppLanguage) -> Unit
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Закрыть") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(strings.close) } },
     )
 }
 
@@ -261,6 +256,7 @@ private fun LanguagePicker(current: AppLanguage, onSelect: (AppLanguage) -> Unit
 private fun ThemeSegmented(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
     val c = auroraColors()
     val accent = LocalAccentColor.current
+    val strings = LocalStrings.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -285,7 +281,7 @@ private fun ThemeSegmented(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    themeLabel(mode),
+                    strings.themeName(mode),
                     fontSize = 13.sp,
                     textAlign = TextAlign.Center,
                     fontWeight = if (isSel) FontWeight.SemiBold else FontWeight.Normal,

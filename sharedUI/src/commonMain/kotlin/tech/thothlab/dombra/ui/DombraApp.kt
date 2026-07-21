@@ -1,6 +1,7 @@
 package tech.thothlab.dombra.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -13,6 +14,8 @@ import kotlinx.coroutines.launch
 import tech.thothlab.dombra.di.AppGraph
 import tech.thothlab.dombra.domain.model.AppSettings
 import tech.thothlab.dombra.domain.model.HomeSectionId
+import tech.thothlab.dombra.i18n.LocalStrings
+import tech.thothlab.dombra.i18n.Strings
 import tech.thothlab.dombra.presentation.player.PlayerState
 import tech.thothlab.dombra.theme.AppTheme
 
@@ -39,6 +42,7 @@ fun DombraApp(
             splashElapsed = true
         }
 
+        CompositionLocalProvider(LocalStrings provides Strings(settings.language)) {
         when {
             !(appSettings != null && splashElapsed) -> SplashScreen()
 
@@ -48,6 +52,7 @@ fun DombraApp(
             )
 
             else -> MainShell(graph, onPickFolder, settings)
+        }
         }
     }
 }
