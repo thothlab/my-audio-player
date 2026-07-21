@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import dombra.sharedui.generated.resources.Res
 import dombra.sharedui.generated.resources.dombra_gold
 import org.jetbrains.compose.resources.painterResource
+import tech.thothlab.dombra.i18n.LocalStrings
 import kotlin.math.sqrt
 
 /** Золото знака и текста на сплеше. */
@@ -37,6 +38,7 @@ private val SplashGold = Color(0xFFE9C877)
  */
 @Composable
 fun SplashScreen() {
+    val strings = LocalStrings.current
     Box(
         Modifier
             .fillMaxSize()
@@ -90,7 +92,7 @@ fun SplashScreen() {
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "МУЗЫКА БЕЗ ПОТЕРЬ",
+                strings.splashSubtitle,
                 color = SplashGold.copy(alpha = 0.5f),
                 fontSize = 11.sp,
                 letterSpacing = 3.0.sp,

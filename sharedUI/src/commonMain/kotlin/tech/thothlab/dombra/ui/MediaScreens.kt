@@ -54,6 +54,8 @@ import tech.thothlab.dombra.domain.model.Playlist
 import tech.thothlab.dombra.domain.model.SortOrder
 import tech.thothlab.dombra.domain.model.Track
 import tech.thothlab.dombra.domain.model.sortedByOrder
+import tech.thothlab.dombra.i18n.LocalStrings
+import tech.thothlab.dombra.i18n.Strings
 import tech.thothlab.dombra.presentation.player.PlayerState
 import tech.thothlab.dombra.theme.Sym
 import tech.thothlab.dombra.theme.Symbol
@@ -71,13 +73,13 @@ private data class SectionMeta(
     val filled: Boolean = true,
 )
 
-private fun sectionMeta(id: HomeSectionId, count: Int): SectionMeta = when (id) {
-    HomeSectionId.ALL_SONGS -> SectionMeta("Все песни", "$count песен", Sym.MusicNote, Color(0xFFB07CE8))
-    HomeSectionId.LIKED_SONGS -> SectionMeta("Любимые песни", "Ваше избранное", Sym.Favorite, Color(0xFFE0607A))
-    HomeSectionId.PLAYLISTS -> SectionMeta("Плейлисты", "Ваши плейлисты", Sym.QueueMusic, Color(0xFF63C67F))
-    HomeSectionId.ARTISTS -> SectionMeta("Исполнители", "Просмотр по исполнителям", Sym.Group, Color(0xFFB07CE8))
-    HomeSectionId.ALBUMS -> SectionMeta("Альбомы", "Просмотр по альбомам", Sym.Album, Color(0xFFEEA95C))
-    HomeSectionId.ADD_SONGS -> SectionMeta("Открыть файлы", "Импортировать музыкальные файлы", Sym.Add, Color(0xFF5B9BE8), filled = false)
+private fun sectionMeta(id: HomeSectionId, count: Int, strings: Strings): SectionMeta = when (id) {
+    HomeSectionId.ALL_SONGS -> SectionMeta(strings.allSongs, strings.songsCount(count), Sym.MusicNote, Color(0xFFB07CE8))
+    HomeSectionId.LIKED_SONGS -> SectionMeta(strings.likedSongs, strings.yourFavorites, Sym.Favorite, Color(0xFFE0607A))
+    HomeSectionId.PLAYLISTS -> SectionMeta(strings.playlists, strings.yourPlaylists, Sym.QueueMusic, Color(0xFF63C67F))
+    HomeSectionId.ARTISTS -> SectionMeta(strings.artists, strings.browseByArtists, Sym.Group, Color(0xFFB07CE8))
+    HomeSectionId.ALBUMS -> SectionMeta(strings.albums, strings.browseByAlbums, Sym.Album, Color(0xFFEEA95C))
+    HomeSectionId.ADD_SONGS -> SectionMeta(strings.openFiles, strings.importMusicFiles, Sym.Add, Color(0xFF5B9BE8), filled = false)
 }
 
 /** Главный экран «Медиатека»: шапка (иконка/обновить/поиск/настройки) + карточки-разделы. */
@@ -93,6 +95,7 @@ fun MediaHomeScreen(
     onRefresh: () -> Unit,
 ) {
     val songCount by graph.library.tracks().map { it.size }.collectAsState(initial = 0)
+    val strings = LocalStrings.current
 
     Box(Modifier.fillMaxSize()) {
         CosmosBackground(CosmosScreen.Library)
@@ -109,7 +112,7 @@ fun MediaHomeScreen(
             ) {
                 EqMark(size = 38.dp)
                 Text(
-                    "Медиатека",
+                    strings.mediaLibrary,
                     style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.padding(start = 12.dp).weight(1f),
                 )
@@ -134,7 +137,7 @@ fun MediaHomeScreen(
             ) {
                 items(HomeSectionId.entries) { id ->
                     val count = if (id == HomeSectionId.ALL_SONGS) songCount else 0
-                    SectionCard(sectionMeta(id, count)) { onOpenSection(id) }
+                    SectionCard(sectionMeta(id, count, strings)) { onOpenSection(id) }
                 }
             }
         }
@@ -270,18 +273,19 @@ fun CollectionScreen(
     onOpenGroup: (Screen.Tracks) -> Unit,
     onOpenPlayer: () -> Unit,
 ) {
+    val strings = LocalStrings.current
     when (section) {
         HomeSectionId.ALL_SONGS -> {
             val tracks by graph.library.tracks().collectAsState(initial = emptyList())
-            TrackListScreen(graph, "Все песни", "all", tracks, player, onBack, onOpenPlayer)
+            TrackListScreen(graph, strings.allSongs, "all", tracks, player, onBack, onOpenPlayer)
         }
         HomeSectionId.LIKED_SONGS -> {
             val tracks by graph.library.favoriteTracks().collectAsState(initial = emptyList())
-            TrackListScreen(graph, "Любимые песни", "liked", tracks, player, onBack, onOpenPlayer)
+            TrackListScreen(graph, strings.likedSongs, "liked", tracks, player, onBack, onOpenPlayer)
         }
         HomeSectionId.ARTISTS -> {
             val artists by graph.library.artists().collectAsState(initial = emptyList())
-            GroupListScreen("Исполнители", player, onBack, onOpenPlayer, graph) {
+            GroupListScreen(strings.artists, player, onBack, onOpenPlayer, graph) {
                 items(artists, key = { it.id }) { a: Artist ->
                     MediaGroupCard(
                         a.name, Sym.Group, ArtistTileColor,
@@ -292,7 +296,7 @@ fun CollectionScreen(
         }
         HomeSectionId.ALBUMS -> {
             val albums by graph.library.albums().collectAsState(initial = emptyList())
-            GroupListScreen("Альбомы", player, onBack, onOpenPlayer, graph) {
+            GroupListScreen(strings.albums, player, onBack, onOpenPlayer, graph) {
                 items(albums, key = { it.id }) { al: Album ->
                     AlbumGroupCard(graph, al) {
                         onOpenGroup(Screen.Tracks(al.title, TrackListRef.Album(al.id)))
@@ -302,7 +306,7 @@ fun CollectionScreen(
         }
         HomeSectionId.PLAYLISTS -> {
             val playlists by graph.playlists.playlists().collectAsState(initial = emptyList())
-            GroupListScreen("Плейлисты", player, onBack, onOpenPlayer, graph) {
+            GroupListScreen(strings.playlists, player, onBack, onOpenPlayer, graph) {
                 items(playlists, key = { it.id }) { pl: Playlist ->
                     MediaGroupCard(
                         pl.title, Sym.QueueMusic, PlaylistTileColor,
@@ -430,6 +434,7 @@ private fun SortShufflePill(
     var menuOpen by remember { mutableStateOf(false) }
     val accent = LocalAccentColorSafe()
     val c = auroraColors()
+    val strings = LocalStrings.current
     val dark = tech.thothlab.dombra.theme.LocalThemeIsDark.current.value
     val popupBg = if (dark) Color(0xFF1B1922) else Color(0xFFF5F3F6)
     Surface(
@@ -452,7 +457,7 @@ private fun SortShufflePill(
                     border = BorderStroke(1.dp, c.glassBorder),
                 ) {
                     Text(
-                        "СОРТИРОВКА",
+                        strings.sortTitle,
                         fontSize = 10.sp,
                         letterSpacing = 1.6.sp,
                         color = c.textTertiary,
@@ -463,7 +468,7 @@ private fun SortShufflePill(
                         DropdownMenuItem(
                             text = {
                                 Text(
-                                    o.label,
+                                    strings.sortLabel(o),
                                     color = if (selected) accent else c.textPrimary,
                                     fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                                 )

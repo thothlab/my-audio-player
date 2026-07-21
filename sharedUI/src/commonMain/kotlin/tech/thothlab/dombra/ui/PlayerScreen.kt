@@ -82,6 +82,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import tech.thothlab.dombra.di.AppGraph
+import tech.thothlab.dombra.i18n.LocalStrings
 import tech.thothlab.dombra.domain.model.Playlist
 import tech.thothlab.dombra.domain.model.RepeatMode
 import tech.thothlab.dombra.domain.model.Track
@@ -104,6 +105,7 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
     val track = state.currentTrack
     val accent = LocalAccentColor.current
     val scope = rememberCoroutineScope()
+    val strings = LocalStrings.current
 
     var scrub by remember { mutableStateOf<Float?>(null) }
     val artDrag = remember { Animatable(0f) }
@@ -141,7 +143,7 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 GlassCircle(Sym.KeyboardArrowDown, glyphSize = 24.dp, onClick = onBack)
                 Text(
-                    "СЕЙЧАС ИГРАЕТ",
+                    strings.nowPlaying,
                     fontSize = 10.5.sp,
                     letterSpacing = 1.6.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -161,11 +163,11 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
                         border = BorderStroke(1.dp, c.popoverBorder),
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Добавить в плейлист", color = c.textPrimary) },
+                            text = { Text(strings.addToPlaylist, color = c.textPrimary) },
                             onClick = { showMenu = false; showPlaylistSheet = true },
                         )
                         DropdownMenuItem(
-                            text = { Text("Остановить", color = c.textPrimary) },
+                            text = { Text(strings.stop, color = c.textPrimary) },
                             onClick = { showMenu = false; graph.playback.clear(); onBack() },
                         )
                     }
@@ -225,7 +227,7 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        text = track?.title ?: "нет трека",
+                        text = track?.title ?: strings.noTrack,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.SemiBold,
                         letterSpacing = (-0.3).sp,
@@ -345,6 +347,7 @@ private fun AddToPlaylistSheet(graph: AppGraph, track: Track, onDismiss: () -> U
     val scope = rememberCoroutineScope()
     val c = auroraColors()
     val accent = LocalAccentColor.current
+    val strings = LocalStrings.current
     val playlists by graph.playlists.playlists().collectAsState(initial = emptyList())
     var showCreate by remember { mutableStateOf(false) }
     val addedIds = remember { mutableStateListOf<String>() }
@@ -360,7 +363,7 @@ private fun AddToPlaylistSheet(graph: AppGraph, track: Track, onDismiss: () -> U
             ) {
                 ArtworkImage(graph.artwork, track.stableId, shape = RoundedCornerShape(9.dp), modifier = Modifier.size(40.dp), iconScale = 0.5f)
                 Column(Modifier.weight(1f)) {
-                    Text("Добавить в плейлист", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = c.textPrimary)
+                    Text(strings.addToPlaylist, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = c.textPrimary)
                     Text("${track.title} · ${track.artistName}", fontSize = 12.sp, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
@@ -386,7 +389,7 @@ private fun AddToPlaylistSheet(graph: AppGraph, track: Track, onDismiss: () -> U
                         },
                     contentAlignment = Alignment.Center,
                 ) { Symbol(Sym.Add, size = 24.dp, tint = accent) }
-                Text("Создать плейлист", fontSize = 15.5.sp, fontWeight = FontWeight.SemiBold, color = accent)
+                Text(strings.createPlaylist, fontSize = 15.5.sp, fontWeight = FontWeight.SemiBold, color = accent)
             }
 
             // Список плейлистов.
@@ -409,7 +412,7 @@ private fun AddToPlaylistSheet(graph: AppGraph, track: Track, onDismiss: () -> U
                         IconTile(Sym.QueueMusic, PlaylistTileColor, size = 44.dp, iconSize = 22.dp)
                         Column(Modifier.weight(1f)) {
                             Text(pl.title, fontSize = 14.5.sp, fontWeight = FontWeight.Medium, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text("$count треков", fontSize = 12.sp, color = c.textSecondary)
+                            Text(strings.tracksCount(count), fontSize = 12.sp, color = c.textSecondary)
                         }
                         if (added) {
                             Symbol(Sym.Check, size = 24.dp, tint = accent)
@@ -434,9 +437,9 @@ private fun AddToPlaylistSheet(graph: AppGraph, track: Track, onDismiss: () -> U
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     Symbol(Sym.Check, size = 20.dp, tint = Color(0xFF4ADE80))
-                    Text("Добавлено в «${pl.title}»", fontSize = 13.sp, color = Color(0xFFBBF7D0), modifier = Modifier.weight(1f))
+                    Text(strings.addedTo(pl.title), fontSize = 13.sp, color = Color(0xFFBBF7D0), modifier = Modifier.weight(1f))
                     Text(
-                        "Отменить",
+                        strings.undo,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Color.White,
@@ -460,30 +463,30 @@ private fun AddToPlaylistSheet(graph: AppGraph, track: Track, onDismiss: () -> U
         var name by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { showCreate = false },
-            title = { Text("Новый плейлист") },
+            title = { Text(strings.newPlaylist) },
             text = {
                 Column {
-                    Text("Трек «${track.title}» будет добавлен сразу", color = c.textSecondary)
+                    Text(strings.trackWillBeAdded(track.title), color = c.textSecondary)
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it },
                         singleLine = true,
-                        placeholder = { Text("Название") },
+                        placeholder = { Text(strings.name) },
                     )
                 }
             },
             confirmButton = {
                 TextButton(onClick = {
                     scope.launch {
-                        val pl = graph.playlists.create(name.ifBlank { "Новый плейлист" })
+                        val pl = graph.playlists.create(name.ifBlank { strings.newPlaylist })
                         graph.playlists.addTrack(pl.id, track.stableId)
                         showCreate = false
                         onDismiss()
                     }
-                }) { Text("Создать") }
+                }) { Text(strings.create) }
             },
-            dismissButton = { TextButton(onClick = { showCreate = false }) { Text("Отмена") } },
+            dismissButton = { TextButton(onClick = { showCreate = false }) { Text(strings.cancel) } },
         )
     }
 }

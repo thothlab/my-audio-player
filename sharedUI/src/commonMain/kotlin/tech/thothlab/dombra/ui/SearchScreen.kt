@@ -44,13 +44,14 @@ import tech.thothlab.dombra.di.AppGraph
 import tech.thothlab.dombra.domain.model.Album
 import tech.thothlab.dombra.domain.model.Artist
 import tech.thothlab.dombra.domain.model.Track
+import tech.thothlab.dombra.i18n.LocalStrings
 import tech.thothlab.dombra.theme.AuroraPurple
 import tech.thothlab.dombra.theme.LocalAccentColor
 import tech.thothlab.dombra.theme.Sym
 import tech.thothlab.dombra.theme.Symbol
 import tech.thothlab.dombra.theme.auroraColors
 
-internal enum class SearchScope(val label: String) { ALL("Все"), SONGS("Песни"), ARTISTS("Исполнители"), ALBUMS("Альбомы") }
+internal enum class SearchScope { ALL, SONGS, ARTISTS, ALBUMS }
 
 /**
  * Состояние экрана поиска (запрос + область), живущее ВЫШЕ навигации — чтобы при уходе
@@ -79,6 +80,7 @@ internal fun SearchScreen(
     val q = query.trim()
     val accent = LocalAccentColor.current
     val c = auroraColors()
+    val strings = LocalStrings.current
 
     val wantSongs = scope == SearchScope.ALL || scope == SearchScope.SONGS
     val wantArtists = scope == SearchScope.ALL || scope == SearchScope.ARTISTS
@@ -122,7 +124,7 @@ internal fun SearchScreen(
                     Box(Modifier.weight(1f)) {
                         if (query.isEmpty()) {
                             Text(
-                                "Название, исполнитель, альбом",
+                                strings.searchPlaceholder,
                                 style = TextStyle(fontSize = 15.sp),
                                 color = c.textTertiary,
                                 maxLines = 1,
@@ -148,7 +150,7 @@ internal fun SearchScreen(
                     }
                 }
                 Text(
-                    "Готово",
+                    strings.done,
                     style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
                     color = accent,
                     modifier = Modifier.clickable(onClick = onClose),
@@ -164,7 +166,13 @@ internal fun SearchScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 SearchScope.entries.forEach { s ->
-                    ScopeChip(s.label, selected = scope == s, accent = accent) { state.scope = s }
+                    val label = when (s) {
+                        SearchScope.ALL -> strings.searchAll
+                        SearchScope.SONGS -> strings.songs
+                        SearchScope.ARTISTS -> strings.artists
+                        SearchScope.ALBUMS -> strings.albums
+                    }
+                    ScopeChip(label, selected = scope == s, accent = accent) { state.scope = s }
                 }
             }
 
@@ -172,27 +180,27 @@ internal fun SearchScreen(
                 modifier = Modifier.fillMaxSize().padding(top = 8.dp),
             ) {
                 if (songs.isNotEmpty()) {
-                    item { SectionLabel("Песни") }
+                    item { SectionLabel(strings.songs) }
                     items(songs, key = { "s_" + it.stableId }) { t ->
                         SongResultRow(graph, t) { onPlaySong(t, songs) }
                     }
                 }
                 if (artists.isNotEmpty()) {
-                    item { SectionLabel("Исполнители") }
+                    item { SectionLabel(strings.artists) }
                     items(artists, key = { "ar_" + it.id }) { a ->
-                        GroupResultRow(a.name, "исполнитель", ArtistGradient, circle = true) { onOpenArtist(a) }
+                        GroupResultRow(a.name, strings.artistLabel, ArtistGradient, circle = true) { onOpenArtist(a) }
                     }
                 }
                 if (albums.isNotEmpty()) {
-                    item { SectionLabel("Альбомы") }
+                    item { SectionLabel(strings.albums) }
                     items(albums, key = { "al_" + it.id }) { al ->
-                        GroupResultRow(al.title, al.year?.toString() ?: "альбом", AlbumGradient, circle = false) { onOpenAlbum(al) }
+                        GroupResultRow(al.title, al.year?.toString() ?: strings.albumLabel, AlbumGradient, circle = false) { onOpenAlbum(al) }
                     }
                 }
                 if (q.isNotEmpty() && songs.isEmpty() && artists.isEmpty() && albums.isEmpty()) {
                     item {
                         Text(
-                            "Ничего не найдено",
+                            strings.nothingFound,
                             color = c.textSecondary,
                             style = TextStyle(fontSize = 14.sp),
                             modifier = Modifier.padding(vertical = 24.dp),

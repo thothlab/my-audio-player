@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
+import tech.thothlab.dombra.i18n.LocalStrings
 import tech.thothlab.dombra.theme.AuroraPurple
 import tech.thothlab.dombra.theme.LocalAccentColor
 import tech.thothlab.dombra.theme.auroraColors
@@ -73,6 +74,14 @@ fun EqualizerScreen(
 ) {
     val c = auroraColors()
     val accent = LocalAccentColor.current
+    val strings = LocalStrings.current
+    // PRESETS keys and the custom-preset key are stable internal IDs; localize only what is displayed.
+    fun label(key: String) = when (key) {
+        "Плоский" -> strings.eqFlat
+        "Рок" -> strings.eqRock
+        "Джаз" -> strings.eqJazz
+        else -> strings.eqCustom
+    }
     val bands: SnapshotStateList<Float> = remember { List(10) { 0.5f }.toMutableStateList() }
     var preamp by remember { mutableStateOf(0.62f) }
     var preset by remember { mutableStateOf("Свой") }
@@ -93,7 +102,7 @@ fun EqualizerScreen(
                 IconButton(onClick = onBack) {
                     tech.thothlab.dombra.theme.Symbol(tech.thothlab.dombra.theme.Sym.ChevronLeft, size = 28.dp, tint = c.textPrimary)
                 }
-                Text("Эквалайзер", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(start = 4.dp).weight(1f))
+                Text(strings.equalizer, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(start = 4.dp).weight(1f))
                 Switch(
                     checked = enabled,
                     onCheckedChange = onEnabledChange,
@@ -121,7 +130,7 @@ fun EqualizerScreen(
                             }
                             .padding(horizontal = 15.dp, vertical = 7.dp),
                     ) {
-                        Text(name, fontSize = 12.5.sp, fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal, color = if (sel) Color.White else c.textSecondary)
+                        Text(label(name), fontSize = 12.5.sp, fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal, color = if (sel) Color.White else c.textSecondary)
                     }
                 }
             }
@@ -148,7 +157,7 @@ fun EqualizerScreen(
             // Предусиление.
             Column(Modifier.padding(top = 26.dp)) {
                 Row(Modifier.fillMaxWidth().padding(bottom = 9.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Предусиление", fontSize = 13.sp, color = c.textSecondary)
+                    Text(strings.preamp, fontSize = 13.sp, color = c.textSecondary)
                     Text("${(preamp * 24 - 12).roundToInt().let { if (it > 0) "+$it" else "$it" }} dB", fontSize = 12.sp, color = accent, fontFamily = FontFamily.Monospace)
                 }
                 HSlider(value = preamp, accent = accent, trackColor = c.glassBorderStrong, onValueChange = { preamp = it })

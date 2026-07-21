@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import tech.thothlab.dombra.data.remote.subsonic.SubAlbum
 import tech.thothlab.dombra.di.AppGraph
+import tech.thothlab.dombra.i18n.LocalStrings
 import tech.thothlab.dombra.theme.AuroraPurple
 import tech.thothlab.dombra.theme.LocalAccentColor
 import tech.thothlab.dombra.theme.Sym
@@ -65,6 +66,7 @@ fun ServerScreen(
     onOpenAlbum: (albumId: String, title: String) -> Unit,
 ) {
     val config by graph.remote.config.collectAsState()
+    val strings = LocalStrings.current
 
     Box(Modifier.fillMaxSize()) {
         CosmosBackground(CosmosScreen.Secondary)
@@ -80,7 +82,7 @@ fun ServerScreen(
             ) {
                 IconButton(onClick = onBack) { Symbol(Sym.ChevronLeft, size = 28.dp, tint = MaterialTheme.colorScheme.onSurface) }
                 Text(
-                    if (config == null) "Сервер Subsonic" else (config?.label ?: "Сервер"),
+                    if (config == null) strings.serverSubsonic else (config?.label ?: strings.server),
                     style = MaterialTheme.typography.headlineSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -171,6 +173,7 @@ private fun GradientButton(text: String, enabled: Boolean, loading: Boolean, onC
 private fun ConnectForm(graph: AppGraph) {
     val scope = rememberCoroutineScope()
     val c = auroraColors()
+    val strings = LocalStrings.current
     var url by remember { mutableStateOf("https://") }
     var user by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
@@ -179,20 +182,20 @@ private fun ConnectForm(graph: AppGraph) {
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 4.dp)) {
         Text(
-            "Navidrome / OpenSubsonic. Стрим без потерь качества.",
+            strings.subsonicNote,
             style = TextStyle(fontSize = 12.5.sp, lineHeight = 18.sp),
             color = c.textSecondary,
         )
         Spacer(Modifier.height(4.dp))
-        GlassField("Адрес сервера", url, { url = it }, placeholder = "https://", keyboardType = KeyboardType.Uri)
-        GlassField("Имя пользователя", user, { user = it })
-        GlassField("Пароль", pass, { pass = it }, password = true, keyboardType = KeyboardType.Password)
+        GlassField(strings.serverAddress, url, { url = it }, placeholder = "https://", keyboardType = KeyboardType.Uri)
+        GlassField(strings.username, user, { user = it })
+        GlassField(strings.password, pass, { pass = it }, password = true, keyboardType = KeyboardType.Password)
         error?.let {
             Text("⚠ $it", color = MaterialTheme.colorScheme.error, style = TextStyle(fontSize = 13.sp))
         }
         Spacer(Modifier.height(2.dp))
         GradientButton(
-            text = "Проверить и подключить",
+            text = strings.checkAndConnect,
             enabled = url.length > 8 && user.isNotBlank() && pass.isNotBlank(),
             loading = connecting,
         ) {
@@ -201,7 +204,7 @@ private fun ConnectForm(graph: AppGraph) {
                 error = null
                 val result = graph.remote.connect(url, user, pass)
                 connecting = false
-                error = result.exceptionOrNull()?.message?.let { "Не удалось подключиться: $it" }
+                error = result.exceptionOrNull()?.message?.let { strings.connectFailed(it) }
             }
         }
         Row(
@@ -210,7 +213,7 @@ private fun ConnectForm(graph: AppGraph) {
         ) {
             Symbol(Sym.Lock, size = 16.dp, tint = c.textFaint)
             Text(
-                "Пароль не хранится в открытом виде — только salt + token (md5). Поток запрашивается как format=raw.",
+                strings.passwordNote,
                 style = TextStyle(fontSize = 11.sp, lineHeight = 16.sp),
                 color = c.textTertiary,
             )
@@ -223,6 +226,7 @@ private fun ServerBrowse(graph: AppGraph, onOpenAlbum: (String, String) -> Unit)
     val scope = rememberCoroutineScope()
     val c = auroraColors()
     val accent = LocalAccentColor.current
+    val strings = LocalStrings.current
     var query by remember { mutableStateOf("") }
     val q = query.trim()
 
@@ -249,7 +253,7 @@ private fun ServerBrowse(graph: AppGraph, onOpenAlbum: (String, String) -> Unit)
             Symbol(Sym.Search, size = 20.dp, tint = c.textSecondary)
             Box(Modifier.weight(1f)) {
                 if (query.isEmpty()) {
-                    Text("Поиск по серверу", style = TextStyle(fontSize = 14.sp), color = c.textTertiary)
+                    Text(strings.searchServer, style = TextStyle(fontSize = 14.sp), color = c.textTertiary)
                 }
                 BasicTextField(
                     value = query,
@@ -262,7 +266,7 @@ private fun ServerBrowse(graph: AppGraph, onOpenAlbum: (String, String) -> Unit)
             }
         }
         Text(
-            "Отключить сервер",
+            strings.disconnectServer,
             style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Medium),
             color = accent,
             modifier = Modifier
@@ -310,6 +314,7 @@ private fun AlbumRow(album: SubAlbum, coverUrl: String?, graph: AppGraph, onClic
 /** Треки удалённого альбома (просмотр; проигрывание по URL — T07). */
 @Composable
 fun RemoteAlbumScreen(graph: AppGraph, albumId: String, title: String, onBack: () -> Unit) {
+    val strings = LocalStrings.current
     val tracks by produceState(initialValue = emptyList<tech.thothlab.dombra.domain.model.Track>(), albumId) {
         value = runCatching { graph.remote.albumTracks(albumId) }.getOrDefault(emptyList())
     }
@@ -330,7 +335,7 @@ fun RemoteAlbumScreen(graph: AppGraph, albumId: String, title: String, onBack: (
             }
             if (tracks.isEmpty()) {
                 Spacer(Modifier.height(24.dp))
-                Text("Загрузка…", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(strings.loading, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 items(tracks, key = { it.stableId }) { t ->

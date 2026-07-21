@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import dombra.sharedui.generated.resources.Res
 import dombra.sharedui.generated.resources.dombra_icon
 import org.jetbrains.compose.resources.painterResource
+import tech.thothlab.dombra.i18n.LocalStrings
 import tech.thothlab.dombra.theme.LocalAccentColor
 import tech.thothlab.dombra.theme.Sym
 import tech.thothlab.dombra.theme.Symbol
@@ -52,6 +53,7 @@ fun OnboardingScreen(
     onFinish: () -> Unit,
 ) {
     val accent = LocalAccentColor.current
+    val strings = LocalStrings.current
     var step by remember { mutableIntStateOf(0) }
     val steps = 2
 
@@ -108,18 +110,14 @@ fun OnboardingScreen(
             Spacer(Modifier.height(28.dp))
 
             Text(
-                text = if (step == 0) "Добро пожаловать в Dombra" else "Добавьте свою музыку",
+                text = if (step == 0) strings.welcomeTitle else strings.addMusicTitle,
                 style = MaterialTheme.typography.headlineSmall,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onBackground,
             )
             Spacer(Modifier.height(12.dp))
             Text(
-                text = if (step == 0) {
-                    "Плеер для музыки без потери качества — ALAC, FLAC, MP3, Opus и другое. Локально и с вашего сервера."
-                } else {
-                    "Выберите папку с музыкой на устройстве. Подключить свой сервер можно позже в настройках."
-                },
+                text = if (step == 0) strings.welcomeBody else strings.addMusicBody,
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -130,7 +128,7 @@ fun OnboardingScreen(
                 OutlinedButton(onClick = onPickFolder) {
                     Symbol(Sym.Folder, size = 18.dp)
                     Spacer(Modifier.width(8.dp))
-                    Text("Выбрать папку")
+                    Text(strings.pickFolder)
                 }
             }
 
@@ -143,11 +141,11 @@ fun OnboardingScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (step == 0) {
-                    TextButton(onClick = onFinish) { Text("Пропустить") }
-                    Button(onClick = { step = 1 }) { Text("Продолжить") }
+                    TextButton(onClick = onFinish) { Text(strings.skip) }
+                    Button(onClick = { step = 1 }) { Text(strings.continueBtn) }
                 } else {
-                    TextButton(onClick = { step = 0 }) { Text("Назад") }
-                    Button(onClick = onFinish) { Text("Начать") }
+                    TextButton(onClick = { step = 0 }) { Text(strings.back) }
+                    Button(onClick = onFinish) { Text(strings.start) }
                 }
             }
         }
