@@ -308,6 +308,15 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit, onOpenLyrics: (() -> Unit)
                         modifier = Modifier.clip(CircleShape).clickable(onClick = openQueue).padding(8.dp),
                     )
                 }
+                // «Текст песни» — только если у трека есть встроенный текст (тег) и кнопка включена.
+                onOpenLyrics?.let { openLyrics ->
+                    if (track?.hasEmbeddedLyrics == true) {
+                        Symbol(
+                            Sym.Lyrics, size = 22.dp, tint = subtle,
+                            modifier = Modifier.clip(CircleShape).clickable(onClick = openLyrics).padding(8.dp),
+                        )
+                    }
+                }
             }
 
             // Небольшой фиксированный отступ снизу — панель управления держится над
