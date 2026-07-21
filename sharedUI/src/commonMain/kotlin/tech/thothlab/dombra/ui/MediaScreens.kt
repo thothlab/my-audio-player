@@ -745,7 +745,9 @@ internal fun TrackRow(
                 },
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 8.dp),
+            // end = 14dp: правый край трейлинга (эквалайзер-бары / длительность / «ещё») выровнен
+            // по правому краю глифа «сортировка» в тулбаре (20dp-глиф в 48dp IconButton → инсет 14).
+            .padding(start = 8.dp, end = 14.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
