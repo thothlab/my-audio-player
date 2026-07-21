@@ -104,6 +104,7 @@ private fun MainShell(
             onBack = { nav.pop() },
             onOpenGroup = { nav.push(it) },
             onOpenPlayer = { nav.push(Screen.Player) },
+            onSearch = { nav.push(Screen.Search) },
         )
 
         is Screen.Tracks -> TracksScreen(

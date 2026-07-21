@@ -1,6 +1,13 @@
 package tech.thothlab.dombra.ui
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,7 +20,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,15 +33,21 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -44,9 +59,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -56,6 +74,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import tech.thothlab.dombra.di.AppGraph
 import tech.thothlab.dombra.domain.model.Album
+import tech.thothlab.dombra.domain.model.AlbumSort
 import tech.thothlab.dombra.domain.model.Artist
 import tech.thothlab.dombra.domain.model.HomeSectionId
 import tech.thothlab.dombra.domain.model.Playlist
@@ -122,7 +141,7 @@ fun MediaHomeScreen(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                BrandMark(size = 36.dp)
+                EqMark(size = 38.dp)
                 Text(
                     strings.mediaLibrary,
                     style = MaterialTheme.typography.headlineSmall,
@@ -193,27 +212,6 @@ private fun SectionCard(meta: SectionMeta, onClick: () -> Unit) {
             }
             Symbol(Sym.ChevronRight, size = 20.dp, tint = c.textFaint)
         }
-    }
-}
-
-/** Брендовая плитка «D» в шапке «Медиатеки» — accent→фиолетовый градиент, монограмма (по макету turn-2 §2A). */
-@Composable
-private fun BrandMark(size: Dp = 36.dp) {
-    val accent = LocalAccentColorSafe()
-    Box(
-        modifier = Modifier
-            .size(size)
-            .clip(RoundedCornerShape(size * (11f / 36f)))
-            .background(iconTileBrush(accent, AuroraPurple)),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            "D",
-            color = Color.White,
-            fontSize = with(androidx.compose.ui.platform.LocalDensity.current) { (size * (19f / 36f)).toSp() },
-            fontWeight = FontWeight.Bold,
-            letterSpacing = (-0.5).sp,
-        )
     }
 }
 
@@ -303,6 +301,243 @@ private fun AlbumGroupCard(graph: AppGraph, album: Album, onClick: () -> Unit) {
     }
 }
 
+/** Экран «Альбомы»: список/плитка + сортировка (А–Я / Сначала новые / По году) + поиск. Выбор запоминается. */
+@Composable
+private fun AlbumsScreen(
+    graph: AppGraph,
+    player: PlayerState,
+    onBack: () -> Unit,
+    onOpenAlbum: (Screen.Tracks) -> Unit,
+    onOpenPlayer: () -> Unit,
+    onSearch: () -> Unit,
+) {
+    val strings = LocalStrings.current
+    val scope = rememberCoroutineScope()
+    val settings by graph.settings.settings.collectAsState(initial = null)
+    val sort = settings?.albumSort ?: AlbumSort.TITLE
+    val desc = settings?.albumSortDesc ?: false
+    val grid = settings?.albumGridView ?: false
+    val albumsData by graph.library.albums().collectAsState(initial = null)
+    val loading = albumsData == null
+    val albums = albumsData ?: emptyList()
+    val tracks by graph.library.tracks().collectAsState(initial = emptyList())
+
+    val sorted = remember(albums, tracks, sort, desc) {
+        val recency: Map<String, Long> =
+            if (sort == AlbumSort.RECENT) tracks.groupBy { it.albumId }.mapValues { e -> e.value.maxOf { it.addedAt } }
+            else emptyMap()
+        // Восходящая база + разворот по направлению; вторичный ключ — название (стабильность).
+        val base: Comparator<Album> = when (sort) {
+            AlbumSort.TITLE -> compareBy { it.title.lowercase() }
+            AlbumSort.YEAR -> compareBy { it.year ?: Int.MIN_VALUE }
+            AlbumSort.RECENT -> compareBy { recency[it.id] ?: Long.MIN_VALUE }
+        }
+        // Разворот всей сортировки (включая вторичный ключ) → направление меняет порядок
+        // даже у альбомов с одинаковой датой/годом (иначе tiebreak «зависал» на А–Я).
+        val full = base.thenBy { it.title.lowercase() }
+        albums.sortedWith(if (desc) full.reversed() else full)
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        CosmosBackground(CosmosScreen.Secondary)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.systemBars)
+                .padding(horizontal = 16.dp),
+        ) {
+            // Тулбар: назад · «Альбомы» · вид · сортировка · поиск.
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = onBack) { Symbol(Sym.ChevronLeft, size = 28.dp, tint = MaterialTheme.colorScheme.onSurface) }
+                Text(
+                    strings.albums,
+                    style = MaterialTheme.typography.headlineSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = 4.dp).weight(1f),
+                )
+                IconButton(onClick = { scope.launch { graph.settings.update { it.copy(albumGridView = !grid) } } }) {
+                    ViewModeIcon(showGrid = !grid, tint = MaterialTheme.colorScheme.onSurface)
+                }
+                AlbumSortButton(
+                    current = sort,
+                    desc = desc,
+                    onPick = { picked, pickedDesc ->
+                        scope.launch { graph.settings.update { it.copy(albumSort = picked, albumSortDesc = pickedDesc) } }
+                    },
+                )
+                IconButton(onClick = onSearch) { Symbol(Sym.Search, size = 23.dp, tint = MaterialTheme.colorScheme.onSurface) }
+            }
+
+            val bottomPad = if (player.currentTrack != null) 92.dp else 8.dp
+            when {
+                loading && grid -> AlbumGridSkeleton()
+                loading -> GroupListSkeleton()
+                grid -> LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(top = 4.dp, bottom = bottomPad),
+                ) {
+                    gridItems(sorted, key = { it.id }) { al ->
+                        AlbumGridCard(graph, al) { onOpenAlbum(Screen.Tracks(al.title, TrackListRef.Album(al.id))) }
+                    }
+                }
+                else -> LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(top = 4.dp, bottom = bottomPad),
+                ) {
+                    items(sorted, key = { it.id }) { al ->
+                        AlbumGroupCard(graph, al) { onOpenAlbum(Screen.Tracks(al.title, TrackListRef.Album(al.id))) }
+                    }
+                }
+            }
+        }
+        MiniPlayer(
+            graph = graph,
+            player = player,
+            onExpand = onOpenPlayer,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+        )
+    }
+}
+
+/** Плиточная карточка альбома (обложка + название + год). */
+@Composable
+private fun AlbumGridCard(graph: AppGraph, album: Album, onClick: () -> Unit) {
+    val c = auroraColors()
+    var coverId by remember(album.id) { mutableStateOf(albumCoverIdCache[album.id]) }
+    LaunchedEffect(album.id) {
+        if (!albumCoverIdCache.containsKey(album.id)) {
+            val id = runCatching { graph.library.albumTracks(album.id).first().firstOrNull()?.stableId }.getOrNull()
+            albumCoverIdCache[album.id] = id
+            coverId = id
+        }
+    }
+    Column(Modifier.clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(4.dp)) {
+        if (coverId != null) {
+            ArtworkImage(
+                artwork = graph.artwork,
+                stableId = coverId,
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+                iconScale = 0.3f,
+            )
+        } else {
+            Box(
+                Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(14.dp))
+                    .background(iconTileBrush(AlbumTileColor, Color(0xFFB45309))),
+                contentAlignment = Alignment.Center,
+            ) { Symbol(Sym.Album, filled = true, size = 40.dp, tint = Color.White) }
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(album.title, fontSize = 13.5.sp, fontWeight = FontWeight.SemiBold, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        album.year?.let { Text(it.toString(), fontSize = 11.sp, color = c.textSecondary) }
+    }
+}
+
+/** Нарисованная иконка вида (шрифт-сабсет без grid/list глифов): 2×2 плитка или 3 строки. */
+@Composable
+private fun ViewModeIcon(showGrid: Boolean, tint: Color) {
+    if (showGrid) {
+        Column(Modifier.size(20.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            repeat(2) {
+                Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                    repeat(2) { Box(Modifier.fillMaxHeight().weight(1f).clip(RoundedCornerShape(2.dp)).background(tint)) }
+                }
+            }
+        }
+    } else {
+        Column(Modifier.size(20.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            repeat(3) { Box(Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(2.dp)).background(tint)) }
+        }
+    }
+}
+
+/** Кнопка сортировки альбомов: тап по выбранному пункту разворачивает направление (стрелка ↑/↓). */
+@Composable
+private fun AlbumSortButton(current: AlbumSort, desc: Boolean, onPick: (AlbumSort, Boolean) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val c = auroraColors()
+    val accent = LocalAccentColorSafe()
+    val strings = LocalStrings.current
+    val dark = tech.thothlab.dombra.theme.LocalThemeIsDark.current.value
+    val popupBg = if (dark) Color(0xFF1B1922) else Color(0xFFF5F3F6)
+    Box {
+        IconButton(onClick = { open = true }) { Symbol(Sym.SwapVert, size = 22.dp, tint = c.textPrimary) }
+        DropdownMenu(
+            expanded = open,
+            onDismissRequest = { open = false },
+            shape = RoundedCornerShape(16.dp),
+            containerColor = popupBg,
+            border = BorderStroke(1.dp, c.glassBorder),
+        ) {
+            Text(
+                strings.sortTitle,
+                fontSize = 10.sp,
+                letterSpacing = 1.6.sp,
+                color = c.textTertiary,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp),
+            )
+            AlbumSort.entries.forEach { s ->
+                val sel = s == current
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            albumSortLabel(s, strings),
+                            color = if (sel) accent else c.textPrimary,
+                            fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal,
+                        )
+                    },
+                    onClick = {
+                        // Новый пункт — по возрастанию (прямой порядок); повторный тап по выбранному — разворот.
+                        if (sel) onPick(s, !desc) else onPick(s, false)
+                        open = false
+                    },
+                    trailingIcon = { if (sel) SortArrow(up = !desc, tint = accent) },
+                )
+            }
+        }
+    }
+}
+
+/** Нарисованная стрелка направления (↑ по возрастанию / ↓ по убыванию) — в шрифт-сабсете стрелок нет. */
+@Composable
+private fun SortArrow(up: Boolean, tint: Color) {
+    Canvas(Modifier.size(18.dp)) {
+        val w = size.width
+        val h = size.height
+        val cx = w / 2f
+        val stroke = w * 0.12f
+        val top = h * 0.20f
+        val bottom = h * 0.80f
+        val headDx = w * 0.24f
+        val headDy = h * 0.24f
+        drawLine(tint, Offset(cx, top), Offset(cx, bottom), strokeWidth = stroke, cap = StrokeCap.Round)
+        if (up) {
+            drawLine(tint, Offset(cx, top), Offset(cx - headDx, top + headDy), strokeWidth = stroke, cap = StrokeCap.Round)
+            drawLine(tint, Offset(cx, top), Offset(cx + headDx, top + headDy), strokeWidth = stroke, cap = StrokeCap.Round)
+        } else {
+            drawLine(tint, Offset(cx, bottom), Offset(cx - headDx, bottom - headDy), strokeWidth = stroke, cap = StrokeCap.Round)
+            drawLine(tint, Offset(cx, bottom), Offset(cx + headDx, bottom - headDy), strokeWidth = stroke, cap = StrokeCap.Round)
+        }
+    }
+}
+
+private fun albumSortLabel(s: AlbumSort, strings: Strings): String = when (s) {
+    AlbumSort.TITLE -> strings.albumSortAZ
+    AlbumSort.RECENT -> strings.albumSortRecent
+    AlbumSort.YEAR -> strings.albumSortYear
+}
+
 /** Экран раздела: песни/любимые → список треков; исполнители/альбомы/плейлисты → список групп. */
 @Composable
 fun CollectionScreen(
@@ -312,21 +547,22 @@ fun CollectionScreen(
     onBack: () -> Unit,
     onOpenGroup: (Screen.Tracks) -> Unit,
     onOpenPlayer: () -> Unit,
+    onSearch: () -> Unit = {},
 ) {
     val strings = LocalStrings.current
     when (section) {
         HomeSectionId.ALL_SONGS -> {
-            val tracks by graph.library.tracks().collectAsState(initial = emptyList())
-            TrackListScreen(graph, strings.allSongs, "all", tracks, player, onBack, onOpenPlayer)
+            val data by graph.library.tracks().collectAsState(initial = null)
+            TrackListScreen(graph, strings.allSongs, "all", data ?: emptyList(), player, onBack, onOpenPlayer, loading = data == null)
         }
         HomeSectionId.LIKED_SONGS -> {
-            val tracks by graph.library.favoriteTracks().collectAsState(initial = emptyList())
-            TrackListScreen(graph, strings.likedSongs, "liked", tracks, player, onBack, onOpenPlayer)
+            val data by graph.library.favoriteTracks().collectAsState(initial = null)
+            TrackListScreen(graph, strings.likedSongs, "liked", data ?: emptyList(), player, onBack, onOpenPlayer, loading = data == null)
         }
         HomeSectionId.ARTISTS -> {
-            val artists by graph.library.artists().collectAsState(initial = emptyList())
-            GroupListScreen(strings.artists, player, onBack, onOpenPlayer, graph) {
-                items(artists, key = { it.id }) { a: Artist ->
+            val artists by graph.library.artists().collectAsState(initial = null)
+            GroupListScreen(strings.artists, player, onBack, onOpenPlayer, graph, loading = artists == null) {
+                items(artists ?: emptyList(), key = { it.id }) { a: Artist ->
                     MediaGroupCard(
                         a.name, Sym.Group, ArtistTileColor,
                         onClick = { onOpenGroup(Screen.Tracks(a.name, TrackListRef.Artist(a.id))) },
@@ -334,25 +570,39 @@ fun CollectionScreen(
                 }
             }
         }
-        HomeSectionId.ALBUMS -> {
-            val albums by graph.library.albums().collectAsState(initial = emptyList())
-            GroupListScreen(strings.albums, player, onBack, onOpenPlayer, graph) {
-                items(albums, key = { it.id }) { al: Album ->
-                    AlbumGroupCard(graph, al) {
-                        onOpenGroup(Screen.Tracks(al.title, TrackListRef.Album(al.id)))
-                    }
-                }
-            }
-        }
+        HomeSectionId.ALBUMS -> AlbumsScreen(
+            graph = graph,
+            player = player,
+            onBack = onBack,
+            onOpenAlbum = onOpenGroup,
+            onOpenPlayer = onOpenPlayer,
+            onSearch = onSearch,
+        )
         HomeSectionId.PLAYLISTS -> {
-            val playlists by graph.playlists.playlists().collectAsState(initial = emptyList())
-            GroupListScreen(strings.playlists, player, onBack, onOpenPlayer, graph) {
-                items(playlists, key = { it.id }) { pl: Playlist ->
+            val playlists by graph.playlists.playlists().collectAsState(initial = null)
+            val scope = rememberCoroutineScope()
+            var showCreate by remember { mutableStateOf(false) }
+            GroupListScreen(
+                strings.playlists, player, onBack, onOpenPlayer, graph,
+                loading = playlists == null,
+                showEmpty = playlists?.isEmpty() == true,
+                emptyContent = { PlaylistsEmptyState(onCreate = { showCreate = true }) },
+            ) {
+                items(playlists ?: emptyList(), key = { it.id }) { pl: Playlist ->
                     MediaGroupCard(
                         pl.title, Sym.QueueMusic, PlaylistTileColor,
                         onClick = { onOpenGroup(Screen.Tracks(pl.title, TrackListRef.Playlist(pl.id))) },
                     )
                 }
+            }
+            if (showCreate) {
+                CreatePlaylistDialog(
+                    onDismiss = { showCreate = false },
+                    onConfirm = { name ->
+                        scope.launch { graph.playlists.create(name) }
+                        showCreate = false
+                    },
+                )
             }
         }
         HomeSectionId.ADD_SONGS -> Unit // обрабатывается вызывающим (SAF-пикер)
@@ -386,7 +636,8 @@ fun TracksScreen(
         is TrackListRef.Album -> "album:${ref.id}"
         is TrackListRef.Playlist -> "playlist:${ref.id}"
     }
-    val tracks by flow.collectAsState(initial = emptyList())
+    val tracksData by flow.collectAsState(initial = null)
+    val tracks = tracksData ?: emptyList()
     // Hero-шапка детального экрана (обложка/аватар + название + мета + «Слушать»/«Микс») — по макету turn-2 §2E.
     val hero: @Composable () -> Unit = {
         DetailHero(
@@ -399,7 +650,7 @@ fun TracksScreen(
             onOpenAlbum = onOpenAlbum,
         )
     }
-    TrackListScreen(graph, title, collectionKey, tracks, player, onBack, onOpenPlayer, hero = hero)
+    TrackListScreen(graph, title, collectionKey, tracks, player, onBack, onOpenPlayer, hero = hero, loading = tracksData == null)
 }
 
 /** Общий скаффолд списка треков: шапка (назад + заголовок + пилюля shuffle/sort) + список + мини-плеер. */
@@ -413,6 +664,7 @@ private fun TrackListScreen(
     onBack: () -> Unit,
     onOpenPlayer: () -> Unit,
     hero: (@Composable () -> Unit)? = null,
+    loading: Boolean = false,
 ) {
     val settings by graph.settings.settings.collectAsState(initial = null)
     val scope = rememberCoroutineScope()
@@ -459,7 +711,7 @@ private fun TrackListScreen(
                     Spacer(Modifier.weight(1f))
                 }
             }
-            LazyColumn(
+            if (loading) TrackListSkeleton() else LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
                 contentPadding = PaddingValues(bottom = if (player.currentTrack != null) 92.dp else 8.dp),
@@ -687,6 +939,9 @@ private fun GroupListScreen(
     onBack: () -> Unit,
     onOpenPlayer: () -> Unit,
     graph: AppGraph,
+    loading: Boolean = false,
+    showEmpty: Boolean = false,
+    emptyContent: (@Composable () -> Unit)? = null,
     content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit,
 ) {
     Box(Modifier.fillMaxSize()) {
@@ -698,12 +953,17 @@ private fun GroupListScreen(
                 .padding(horizontal = 16.dp),
         ) {
             CollectionHeader(title, onBack)
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(top = 4.dp, bottom = if (player.currentTrack != null) 92.dp else 8.dp),
-                content = content,
-            )
+            when {
+                loading -> GroupListSkeleton()
+                showEmpty && emptyContent != null ->
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { emptyContent() }
+                else -> LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(top = 4.dp, bottom = if (player.currentTrack != null) 92.dp else 8.dp),
+                    content = content,
+                )
+            }
         }
         MiniPlayer(
             graph = graph,
@@ -715,6 +975,66 @@ private fun GroupListScreen(
                 .padding(horizontal = 12.dp, vertical = 10.dp),
         )
     }
+}
+
+/** Пустое состояние «Плейлисты»: по центру знак + текст + кнопка «Создать плейлист». */
+@Composable
+private fun PlaylistsEmptyState(onCreate: () -> Unit) {
+    val c = auroraColors()
+    val accent = LocalAccentColorSafe()
+    val strings = LocalStrings.current
+    Column(
+        modifier = Modifier.padding(horizontal = 40.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(96.dp)
+                .clip(CircleShape)
+                .background(Brush.radialGradient(listOf(accent.copy(alpha = 0.22f), Color.Transparent))),
+            contentAlignment = Alignment.Center,
+        ) { Symbol(Sym.QueueMusic, size = 46.dp, tint = accent) }
+        Spacer(Modifier.height(20.dp))
+        Text(strings.noPlaylistsTitle, fontSize = 19.sp, fontWeight = FontWeight.Bold, color = c.textPrimary, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(8.dp))
+        Text(strings.noPlaylistsBody, fontSize = 13.sp, color = c.textSecondary, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(22.dp))
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(14.dp))
+                .background(Brush.linearGradient(listOf(accent, AuroraPurple)))
+                .clickable(onClick = onCreate)
+                .padding(horizontal = 22.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Symbol(Sym.Add, size = 20.dp, tint = Color.White)
+            Text(strings.createPlaylist, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+        }
+    }
+}
+
+/** Диалог создания плейлиста (пустое имя → «Новый плейлист»). */
+@Composable
+private fun CreatePlaylistDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    val c = auroraColors()
+    val strings = LocalStrings.current
+    var name by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = c.popoverSurface,
+        title = { Text(strings.newPlaylist, color = c.textPrimary) },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                singleLine = true,
+                placeholder = { Text(strings.name) },
+            )
+        },
+        confirmButton = { TextButton(onClick = { onConfirm(name.ifBlank { strings.newPlaylist }) }) { Text(strings.create) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(strings.cancel) } },
+    )
 }
 
 @Composable
@@ -826,3 +1146,86 @@ internal fun TrackRow(
 
 @Composable
 private fun LocalAccentColorSafe(): Color = tech.thothlab.dombra.theme.LocalAccentColor.current
+
+// ---- Скелетоны загрузки списков (пульсирующие плейсхолдеры под форму строк) ----
+
+/** Пульсирующий цвет-плейсхолдер (белый/чёрный с «дыханием» альфы). */
+@Composable
+private fun rememberSkeletonColor(): Color {
+    val t = rememberInfiniteTransition(label = "skeleton")
+    val a by t.animateFloat(
+        initialValue = 0.06f,
+        targetValue = 0.15f,
+        animationSpec = infiniteRepeatable(tween(750, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "pulse",
+    )
+    val dark = tech.thothlab.dombra.theme.LocalThemeIsDark.current.value
+    return if (dark) Color.White.copy(alpha = a) else Color.Black.copy(alpha = a)
+}
+
+@Composable
+private fun SkeletonBox(modifier: Modifier, corner: Dp, color: Color) {
+    Box(modifier.clip(RoundedCornerShape(corner)).background(color))
+}
+
+private val skeletonWidths = listOf(0.62f, 0.48f, 0.70f, 0.55f, 0.42f, 0.66f, 0.5f, 0.58f)
+
+/** Скелетон списка треков: обложка + две строки текста. */
+@Composable
+private fun TrackListSkeleton() {
+    val col = rememberSkeletonColor()
+    Column(Modifier.fillMaxSize().padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        repeat(8) { i ->
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SkeletonBox(Modifier.size(44.dp), 10.dp, col)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    SkeletonBox(Modifier.fillMaxWidth(skeletonWidths[i % skeletonWidths.size]).height(13.dp), 4.dp, col)
+                    SkeletonBox(Modifier.fillMaxWidth(0.32f).height(11.dp), 4.dp, col)
+                }
+            }
+        }
+    }
+}
+
+/** Скелетон списка групп-карточек (плитка + строка в стеклянной карточке). */
+@Composable
+private fun GroupListSkeleton() {
+    val c = auroraColors()
+    val col = rememberSkeletonColor()
+    Column(Modifier.fillMaxSize().padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        repeat(6) { i ->
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(c.glassFill)
+                    .border(1.dp, c.glassBorder, RoundedCornerShape(16.dp)).padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SkeletonBox(Modifier.size(48.dp), 13.dp, col)
+                SkeletonBox(Modifier.fillMaxWidth(skeletonWidths[i % skeletonWidths.size]).height(15.dp), 4.dp, col)
+            }
+        }
+    }
+}
+
+/** Скелетон плиточной сетки альбомов (6 плиток, 2 колонки). */
+@Composable
+private fun AlbumGridSkeleton() {
+    val col = rememberSkeletonColor()
+    Column(Modifier.fillMaxSize().padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        repeat(3) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                repeat(2) {
+                    Column(Modifier.weight(1f).padding(4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SkeletonBox(Modifier.fillMaxWidth().aspectRatio(1f), 14.dp, col)
+                        SkeletonBox(Modifier.fillMaxWidth(0.7f).height(13.dp), 4.dp, col)
+                        SkeletonBox(Modifier.fillMaxWidth(0.3f).height(11.dp), 4.dp, col)
+                    }
+                }
+            }
+        }
+    }
+}

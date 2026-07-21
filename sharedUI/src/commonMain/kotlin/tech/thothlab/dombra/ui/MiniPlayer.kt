@@ -27,6 +27,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,6 +47,7 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import tech.thothlab.dombra.di.AppGraph
+import tech.thothlab.dombra.theme.LocalAccentColor
 import tech.thothlab.dombra.theme.Sym
 import tech.thothlab.dombra.theme.Symbol
 import tech.thothlab.dombra.theme.auroraColors
@@ -148,24 +150,28 @@ fun MiniPlayer(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                // Контролы вплотную друг к другу (как в макете), а не разнесённые IconButton'ы.
+                // Контролы: «в избранное» + «пуск/стоп» (слева направо), уменьшенные.
+                val accent = LocalAccentColor.current
+                val fav by remember(track.stableId) { graph.library.isFavorite(track.stableId) }.collectAsState(initial = false)
                 Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Symbol(
+                        Sym.Favorite,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .clickable { scope.launch { graph.library.setFavorite(track.stableId, !fav) } }
+                            .padding(6.dp),
+                        filled = fav,
+                        size = 20.dp,
+                        tint = if (fav) accent else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                     Symbol(
                         if (player.isPlaying) Sym.Pause else Sym.PlayArrow,
                         modifier = Modifier
                             .clip(CircleShape)
                             .clickable { graph.playback.togglePlayPause() }
-                            .padding(7.dp),
+                            .padding(6.dp),
                         filled = true,
-                        size = 26.dp,
-                    )
-                    Symbol(
-                        Sym.SkipNext,
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .clickable { graph.playback.next() }
-                            .padding(7.dp),
-                        size = 26.dp,
+                        size = 20.dp,
                     )
                 }
             }

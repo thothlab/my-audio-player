@@ -199,6 +199,9 @@ enum class ReplayGainMode { OFF, TRACK, ALBUM }
 
 enum class HomeSectionId { ALL_SONGS, LIKED_SONGS, PLAYLISTS, ARTISTS, ALBUMS, ADD_SONGS }
 
+/** Порядок сортировки списка альбомов. RECENT — по последнему добавленному треку альбома. */
+enum class AlbumSort { TITLE, RECENT, YEAR }
+
 @Serializable
 data class HomeSection(
     val id: HomeSectionId,
@@ -223,6 +226,10 @@ data class AppSettings(
     val onboardingDone: Boolean = false,
     /** Порядок сортировки по ключу коллекции (PRD-03 T03): "all"/"liked"/"artist:id"/… */
     val sortOrders: Map<String, SortOrder> = emptyMap(),
+    /** Экран «Альбомы»: сортировка, направление (по убыванию) и вид (список/плитка). */
+    val albumSort: AlbumSort = AlbumSort.TITLE,
+    val albumSortDesc: Boolean = false,
+    val albumGridView: Boolean = false,
 ) {
     /** Толерантность к новым секциям: недостающие добавляются в конец видимыми. */
     fun withAllSections(): AppSettings {

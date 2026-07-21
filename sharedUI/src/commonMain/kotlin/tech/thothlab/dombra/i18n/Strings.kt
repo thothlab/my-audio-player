@@ -34,6 +34,8 @@ class Strings(lang: AppLanguage) {
     val openFiles = t("Открыть файлы", "Open files")
     val yourFavorites = t("Ваше избранное", "Your favorites")
     val yourPlaylists = t("Ваши плейлисты", "Your playlists")
+    val noPlaylistsTitle = t("Пока нет плейлистов", "No playlists yet")
+    val noPlaylistsBody = t("Создайте первый и добавляйте в него любимые треки", "Create one and start adding your favorite tracks")
     val browseByArtists = t("Просмотр по исполнителям", "Browse by artist")
     val browseByAlbums = t("Просмотр по альбомам", "Browse by album")
     val importMusicFiles = t("Импортировать музыкальные файлы", "Import music files")
@@ -44,6 +46,9 @@ class Strings(lang: AppLanguage) {
 
     // Списки / сортировка
     val sortTitle = t("СОРТИРОВКА", "SORT")
+    val albumSortAZ = t("По алфавиту", "Alphabetical")
+    val albumSortRecent = t("По дате добавления", "Date added")
+    val albumSortYear = t("По году", "By year")
     fun sortLabel(o: SortOrder) = when (o) {
         SortOrder.MANUAL -> t("Вручную", "Manual")
         SortOrder.DATE_ADDED_DESC -> t("Дата добавления · новые", "Date added · newest")
