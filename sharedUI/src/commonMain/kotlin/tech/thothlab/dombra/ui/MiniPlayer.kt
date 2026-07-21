@@ -29,9 +29,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
@@ -89,7 +91,7 @@ fun MiniPlayer(
             .pointerInput(Unit) {
                 detectTapGestures { onExpand() }
             },
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(18.dp),
         color = c.barSurface,
         border = BorderStroke(1.dp, c.barBorder),
     ) {
@@ -105,20 +107,22 @@ fun MiniPlayer(
             ArtworkImage(
                 artwork = graph.artwork,
                 stableId = track.stableId,
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.size(48.dp),
+                shape = RoundedCornerShape(11.dp),
+                modifier = Modifier.size(42.dp),
                 iconScale = 0.5f,
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = track.title,
-                    style = MaterialTheme.typography.titleSmall,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = track.artistName,
-                    style = MaterialTheme.typography.bodySmall,
+                    fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

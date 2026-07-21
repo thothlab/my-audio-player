@@ -39,6 +39,8 @@ class Strings(lang: AppLanguage) {
     val importMusicFiles = t("Импортировать музыкальные файлы", "Import music files")
     fun songsCount(n: Int) = if (en) "$n songs" else "$n песен"
     fun tracksCount(n: Int) = if (en) "$n tracks" else "$n треков"
+    fun albumsCount(n: Int) = if (en) "$n albums" else "$n альбомов"
+    val playlist = t("Плейлист", "Playlist")
 
     // Списки / сортировка
     val sortTitle = t("СОРТИРОВКА", "SORT")
@@ -72,6 +74,15 @@ class Strings(lang: AppLanguage) {
     val undo = t("Отменить", "Undo")
     val stop = t("Остановить", "Stop")
     val name = t("Название", "Name")
+    val playNext = t("Играть следующим", "Play next")
+    val addToQueue = t("В очередь", "Add to queue")
+
+    // Очередь
+    val queue = t("Очередь", "Queue")
+    val clearQueue = t("Очистить", "Clear")
+    val upNext = t("Далее", "Up next")
+    val listen = t("Слушать", "Play")
+    val shuffle = t("Микс", "Shuffle")
     fun addedTo(pl: String) = if (en) "Added to «$pl»" else "Добавлено в «$pl»"
     fun trackWillBeAdded(title: String) =
         if (en) "Track «$title» will be added right away" else "Трек «$title» будет добавлен сразу"

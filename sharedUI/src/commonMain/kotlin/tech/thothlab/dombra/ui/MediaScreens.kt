@@ -4,21 +4,27 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -38,7 +44,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -57,6 +65,7 @@ import tech.thothlab.dombra.domain.model.sortedByOrder
 import tech.thothlab.dombra.i18n.LocalStrings
 import tech.thothlab.dombra.i18n.Strings
 import tech.thothlab.dombra.presentation.player.PlayerState
+import tech.thothlab.dombra.theme.AuroraPurple
 import tech.thothlab.dombra.theme.Sym
 import tech.thothlab.dombra.theme.Symbol
 import tech.thothlab.dombra.theme.auroraColors
@@ -64,22 +73,24 @@ import tech.thothlab.dombra.theme.iconTileBrush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-/** Метаданные раздела «Медиатеки» — глиф (Material Symbols Rounded), цвет плитки, заголовок и подпись. */
+/** Метаданные раздела «Медиатеки» — глиф (Material Symbols Rounded), двухцветный градиент плитки, заголовок и подпись. */
 private data class SectionMeta(
     val title: String,
     val subtitle: String,
     val glyph: Char,
-    val color: Color,
+    val startColor: Color,
+    val endColor: Color,
     val filled: Boolean = true,
 )
 
-private fun sectionMeta(id: HomeSectionId, count: Int, strings: Strings): SectionMeta = when (id) {
-    HomeSectionId.ALL_SONGS -> SectionMeta(strings.allSongs, strings.songsCount(count), Sym.MusicNote, Color(0xFFB07CE8))
-    HomeSectionId.LIKED_SONGS -> SectionMeta(strings.likedSongs, strings.yourFavorites, Sym.Favorite, Color(0xFFE0607A))
-    HomeSectionId.PLAYLISTS -> SectionMeta(strings.playlists, strings.yourPlaylists, Sym.QueueMusic, Color(0xFF63C67F))
-    HomeSectionId.ARTISTS -> SectionMeta(strings.artists, strings.browseByArtists, Sym.Group, Color(0xFFB07CE8))
-    HomeSectionId.ALBUMS -> SectionMeta(strings.albums, strings.browseByAlbums, Sym.Album, Color(0xFFEEA95C))
-    HomeSectionId.ADD_SONGS -> SectionMeta(strings.openFiles, strings.importMusicFiles, Sym.Add, Color(0xFF5B9BE8), filled = false)
+/** Двухцветные градиенты плиток разделов — по макету «Медиатека» (turn-2 §2A). */
+private fun sectionMeta(id: HomeSectionId, count: Int, strings: Strings, accent: Color): SectionMeta = when (id) {
+    HomeSectionId.ALL_SONGS -> SectionMeta(strings.allSongs, strings.songsCount(count), Sym.MusicNote, accent, AuroraPurple)
+    HomeSectionId.LIKED_SONGS -> SectionMeta(strings.likedSongs, strings.yourFavorites, Sym.Favorite, Color(0xFFFF5A7A), Color(0xFFE11D48))
+    HomeSectionId.PLAYLISTS -> SectionMeta(strings.playlists, strings.yourPlaylists, Sym.QueueMusic, Color(0xFFA06BFF), Color(0xFF6D28D9))
+    HomeSectionId.ARTISTS -> SectionMeta(strings.artists, strings.browseByArtists, Sym.Group, Color(0xFF2DD4BF), Color(0xFF0D9488))
+    HomeSectionId.ALBUMS -> SectionMeta(strings.albums, strings.browseByAlbums, Sym.Album, Color(0xFFF59E0B), Color(0xFFB45309))
+    HomeSectionId.ADD_SONGS -> SectionMeta(strings.openFiles, strings.importMusicFiles, Sym.Add, Color(0xFF38BDF8), Color(0xFF2563EB), filled = false)
 }
 
 /** Главный экран «Медиатека»: шапка (иконка/обновить/поиск/настройки) + карточки-разделы. */
@@ -96,6 +107,7 @@ fun MediaHomeScreen(
 ) {
     val songCount by graph.library.tracks().map { it.size }.collectAsState(initial = 0)
     val strings = LocalStrings.current
+    val accent = LocalAccentColorSafe()
 
     Box(Modifier.fillMaxSize()) {
         CosmosBackground(CosmosScreen.Library)
@@ -110,7 +122,7 @@ fun MediaHomeScreen(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                EqMark(size = 38.dp)
+                BrandMark(size = 36.dp)
                 Text(
                     strings.mediaLibrary,
                     style = MaterialTheme.typography.headlineSmall,
@@ -137,7 +149,7 @@ fun MediaHomeScreen(
             ) {
                 items(HomeSectionId.entries) { id ->
                     val count = if (id == HomeSectionId.ALL_SONGS) songCount else 0
-                    SectionCard(sectionMeta(id, count, strings)) { onOpenSection(id) }
+                    SectionCard(sectionMeta(id, count, strings, accent)) { onOpenSection(id) }
                 }
             }
         }
@@ -168,30 +180,58 @@ private fun SectionCard(meta: SectionMeta, onClick: () -> Unit) {
             modifier = Modifier.padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconTile(meta.glyph, meta.color, size = 54.dp, iconSize = 28.dp, filled = meta.filled)
+            IconTile(meta.glyph, meta.startColor, size = 46.dp, iconSize = 24.dp, filled = meta.filled, endColor = meta.endColor)
             Column(modifier = Modifier.padding(start = 14.dp).weight(1f)) {
                 Text(meta.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
                     meta.subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
+                    fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Symbol(Sym.ChevronRight, size = 20.dp, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Symbol(Sym.ChevronRight, size = 20.dp, tint = c.textFaint)
         }
     }
 }
 
-/** Градиентная скруглённая плитка-иконка (Aurora Glass: цвет секции → фиолетовый, белый глиф). */
+/** Брендовая плитка «D» в шапке «Медиатеки» — accent→фиолетовый градиент, монограмма (по макету turn-2 §2A). */
 @Composable
-internal fun IconTile(glyph: Char, color: Color, size: Dp = 48.dp, iconSize: Dp = 24.dp, filled: Boolean = true) {
+private fun BrandMark(size: Dp = 36.dp) {
+    val accent = LocalAccentColorSafe()
     Box(
         modifier = Modifier
             .size(size)
-            .clip(RoundedCornerShape(14.dp))
-            .background(iconTileBrush(color)),
+            .clip(RoundedCornerShape(size * (11f / 36f)))
+            .background(iconTileBrush(accent, AuroraPurple)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            "D",
+            color = Color.White,
+            fontSize = with(androidx.compose.ui.platform.LocalDensity.current) { (size * (19f / 36f)).toSp() },
+            fontWeight = FontWeight.Bold,
+            letterSpacing = (-0.5).sp,
+        )
+    }
+}
+
+/** Градиентная скруглённая плитка-иконка (Aurora Glass: двухцветный градиент, белый глиф). */
+@Composable
+internal fun IconTile(
+    glyph: Char,
+    color: Color,
+    size: Dp = 48.dp,
+    iconSize: Dp = 24.dp,
+    filled: Boolean = true,
+    endColor: Color = AuroraPurple,
+) {
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(RoundedCornerShape(13.dp))
+            .background(iconTileBrush(color, endColor)),
         contentAlignment = Alignment.Center,
     ) {
         Symbol(glyph, filled = filled, size = iconSize, tint = Color.White)
@@ -328,6 +368,7 @@ fun TracksScreen(
     player: PlayerState,
     onBack: () -> Unit,
     onOpenPlayer: () -> Unit,
+    onOpenAlbum: ((albumId: String, title: String) -> Unit)? = null,
 ) {
     val flow = when (ref) {
         is TrackListRef.Artist -> graph.library.artistTracks(ref.id)
@@ -346,7 +387,19 @@ fun TracksScreen(
         is TrackListRef.Playlist -> "playlist:${ref.id}"
     }
     val tracks by flow.collectAsState(initial = emptyList())
-    TrackListScreen(graph, title, collectionKey, tracks, player, onBack, onOpenPlayer)
+    // Hero-шапка детального экрана (обложка/аватар + название + мета + «Слушать»/«Микс») — по макету turn-2 §2E.
+    val hero: @Composable () -> Unit = {
+        DetailHero(
+            graph = graph,
+            title = title,
+            ref = ref,
+            tracks = tracks,
+            onPlay = { if (tracks.isNotEmpty()) graph.playback.playQueue(tracks, 0) },
+            onShuffle = { if (tracks.isNotEmpty()) graph.playback.shufflePlay(tracks) },
+            onOpenAlbum = onOpenAlbum,
+        )
+    }
+    TrackListScreen(graph, title, collectionKey, tracks, player, onBack, onOpenPlayer, hero = hero)
 }
 
 /** Общий скаффолд списка треков: шапка (назад + заголовок + пилюля shuffle/sort) + список + мини-плеер. */
@@ -359,6 +412,7 @@ private fun TrackListScreen(
     player: PlayerState,
     onBack: () -> Unit,
     onOpenPlayer: () -> Unit,
+    hero: (@Composable () -> Unit)? = null,
 ) {
     val settings by graph.settings.settings.collectAsState(initial = null)
     val scope = rememberCoroutineScope()
@@ -378,28 +432,34 @@ private fun TrackListScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onBack) { Symbol(Sym.ChevronLeft, size = 28.dp, tint = MaterialTheme.colorScheme.onSurface) }
-                Text(
-                    title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = 4.dp).weight(1f),
-                )
-                SortShufflePill(
-                    order = order,
-                    onShuffle = { if (sorted.isNotEmpty()) graph.playback.shufflePlay(sorted) },
-                    onPick = { picked ->
-                        scope.launch {
-                            graph.settings.update { it.copy(sortOrders = it.sortOrders + (collectionKey to picked)) }
-                        }
-                    },
-                )
+                // Детальный экран (hero != null): заголовок/мета — в hero, тулбар минимальный, без сортировки.
+                if (hero == null) {
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.headlineSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(start = 4.dp).weight(1f),
+                    )
+                    SortShufflePill(
+                        order = order,
+                        onShuffle = { if (sorted.isNotEmpty()) graph.playback.shufflePlay(sorted) },
+                        onPick = { picked ->
+                            scope.launch {
+                                graph.settings.update { it.copy(sortOrders = it.sortOrders + (collectionKey to picked)) }
+                            }
+                        },
+                    )
+                } else {
+                    Spacer(Modifier.weight(1f))
+                }
             }
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
                 contentPadding = PaddingValues(bottom = if (player.currentTrack != null) 92.dp else 8.dp),
             ) {
+                if (hero != null) item(key = "hero") { hero() }
                 items(sorted, key = { it.stableId }) { track ->
                     val current = track.stableId == player.currentTrack?.stableId
                     TrackRow(
@@ -408,6 +468,8 @@ private fun TrackListScreen(
                         isCurrent = current,
                         isPlaying = current && player.isPlaying,
                         onClick = { graph.playback.playNow(track, sorted) },
+                        onPlayNext = { graph.playback.addNext(track) },
+                        onAddToQueue = { graph.playback.addLast(track) },
                     )
                 }
             }
@@ -421,6 +483,122 @@ private fun TrackListScreen(
                 .windowInsetsPadding(WindowInsets.navigationBars)
                 .padding(horizontal = 12.dp, vertical = 10.dp),
         )
+    }
+}
+
+/** Hero-шапка детального экрана (альбом/исполнитель/плейлист): обложка/аватар + название + мета +
+ *  «Слушать» (градиент) / «Микс» (стекло). У исполнителя — полоса «Альбомы». Макет turn-2 §2E / turn-11. */
+@Composable
+private fun DetailHero(
+    graph: AppGraph,
+    title: String,
+    ref: TrackListRef,
+    tracks: List<Track>,
+    onPlay: () -> Unit,
+    onShuffle: () -> Unit,
+    onOpenAlbum: ((albumId: String, title: String) -> Unit)?,
+) {
+    val c = auroraColors()
+    val accent = LocalAccentColorSafe()
+    val strings = LocalStrings.current
+    val count = tracks.size
+    val meta = when (ref) {
+        is TrackListRef.Artist -> {
+            val albumCount = tracks.map { it.albumId }.distinct().size
+            listOf(strings.tracksCount(count), strings.albumsCount(albumCount)).joinToString(" · ")
+        }
+        is TrackListRef.Album -> {
+            val first = tracks.firstOrNull()
+            listOfNotNull(first?.artistName, first?.year?.toString(), strings.tracksCount(count)).joinToString(" · ")
+        }
+        is TrackListRef.Playlist -> {
+            val totalMs = tracks.sumOf { it.durationMs ?: 0L }
+            listOf(strings.playlist, strings.tracksCount(count), formatTime(totalMs)).joinToString(" · ")
+        }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        // Обложка (альбом/плейлист) или круглый аватар (исполнитель).
+        if (ref is TrackListRef.Artist) {
+            Box(
+                Modifier.size(112.dp).clip(CircleShape)
+                    .background(Brush.linearGradient(listOf(Color(0xFF2DD4BF), Color(0xFF0E7490), AuroraPurple))),
+                contentAlignment = Alignment.Center,
+            ) { Symbol(Sym.Group, filled = true, size = 46.dp, tint = Color.White) }
+        } else {
+            ArtworkImage(
+                artwork = graph.artwork,
+                stableId = tracks.firstOrNull()?.stableId,
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.size(150.dp),
+                iconScale = 0.34f,
+            )
+        }
+        Spacer(Modifier.height(14.dp))
+        Text(
+            title, fontSize = 21.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.4).sp,
+            color = c.textPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(meta, fontSize = 13.5.sp, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Spacer(Modifier.height(16.dp))
+        // «Слушать» (градиент) + «Микс» (стекло-кнопка shuffle).
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Brush.linearGradient(listOf(accent, AuroraPurple)))
+                    .clickable(onClick = onPlay)
+                    .padding(horizontal = 26.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
+            ) {
+                Symbol(Sym.PlayArrow, filled = true, size = 20.dp, tint = Color.White)
+                Text(strings.listen, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+            }
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(c.glassFillStrong)
+                    .border(1.dp, c.glassBorderStrong, RoundedCornerShape(14.dp))
+                    .clickable(onClick = onShuffle),
+                contentAlignment = Alignment.Center,
+            ) { Symbol(Sym.Shuffle, size = 21.dp, tint = accent) }
+        }
+        // Полоса «Альбомы» у исполнителя (по макету F13).
+        if (ref is TrackListRef.Artist && onOpenAlbum != null) {
+            val albums by graph.library.artistAlbums(ref.id).collectAsState(initial = emptyList())
+            if (albums.isNotEmpty()) {
+                Spacer(Modifier.height(20.dp))
+                Text(
+                    strings.albums.uppercase(), fontSize = 10.sp, letterSpacing = 1.4.sp, color = c.textTertiary,
+                    modifier = Modifier.fillMaxWidth().padding(start = 2.dp, bottom = 10.dp),
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    albums.forEach { al ->
+                        Column(
+                            Modifier.width(120.dp).clip(RoundedCornerShape(14.dp)).clickable { onOpenAlbum(al.id, al.title) },
+                        ) {
+                            Box(
+                                Modifier.size(120.dp).clip(RoundedCornerShape(14.dp))
+                                    .background(iconTileBrush(Color(0xFFF59E0B), Color(0xFFB45309))),
+                                contentAlignment = Alignment.Center,
+                            ) { Symbol(Sym.Album, filled = true, size = 40.dp, tint = Color.White) }
+                            Spacer(Modifier.height(8.dp))
+                            Text(al.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            al.year?.let { Text(it.toString(), fontSize = 11.sp, color = c.textSecondary) }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -439,15 +617,18 @@ private fun SortShufflePill(
     val popupBg = if (dark) Color(0xFF1B1922) else Color(0xFFF5F3F6)
     Surface(
         shape = RoundedCornerShape(24.dp),
-        color = accent.copy(alpha = 0.14f),
+        color = c.glassFillStrong,
+        border = BorderStroke(1.dp, c.glassBorderStrong),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onShuffle) {
                 Symbol(Sym.Shuffle, size = 20.dp, tint = accent)
             }
+            // Разделитель по макету (1px, высота 16).
+            Box(Modifier.size(1.dp, 16.dp).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.16f)))
             Box {
                 IconButton(onClick = { menuOpen = true }) {
-                    Symbol(Sym.SwapVert, size = 20.dp, tint = accent)
+                    Symbol(Sym.SwapVert, size = 20.dp, tint = MaterialTheme.colorScheme.onSurface)
                 }
                 DropdownMenu(
                     expanded = menuOpen,
@@ -542,9 +723,12 @@ internal fun TrackRow(
     isCurrent: Boolean,
     isPlaying: Boolean,
     onClick: () -> Unit,
+    onPlayNext: (() -> Unit)? = null,
+    onAddToQueue: (() -> Unit)? = null,
 ) {
     val accent = LocalAccentColorSafe()
     val c = auroraColors()
+    val strings = LocalStrings.current
     Row(
         // Подсветка/рамка — на всю ширину строки (снаружи паддинга), а внутренний
         // отступ ОДИНАКОВ для всех строк → иконки строго в одну вертикаль (как в макете).
@@ -555,7 +739,7 @@ internal fun TrackRow(
                     Modifier
                         .clip(RoundedCornerShape(14.dp))
                         .background(c.glassFillStrong)
-                        .border(1.dp, accent.copy(alpha = 0.18f), RoundedCornerShape(14.dp))
+                        .border(1.dp, c.glassBorderStrong, RoundedCornerShape(14.dp))
                 } else {
                     Modifier
                 },
@@ -568,28 +752,59 @@ internal fun TrackRow(
         ArtworkImage(
             artwork = artwork,
             stableId = track.stableId,
-            shape = RoundedCornerShape(8.dp),
-            modifier = Modifier.size(48.dp),
+            shape = RoundedCornerShape(10.dp),
+            modifier = Modifier.size(44.dp),
             iconScale = 0.5f,
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = track.title,
-                style = MaterialTheme.typography.bodyLarge,
+                fontSize = 14.5.sp,
                 color = if (isCurrent) accent else MaterialTheme.colorScheme.onSurface,
-                fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal,
+                fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = track.artistName,
-                style = MaterialTheme.typography.bodySmall,
+                fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        if (isCurrent) PlayingBars(color = accent, playing = isPlaying)
+        if (isCurrent) {
+            PlayingBars(color = accent, playing = isPlaying)
+        } else {
+            track.durationMs?.let {
+                Text(formatTime(it), fontSize = 11.sp, fontFamily = FontFamily.Monospace, color = c.textTertiary)
+            }
+            if (onPlayNext != null || onAddToQueue != null) {
+                var menuOpen by remember { mutableStateOf(false) }
+                Box {
+                    Symbol(
+                        Sym.MoreHoriz,
+                        size = 20.dp,
+                        tint = c.textFaint,
+                        modifier = Modifier.clip(CircleShape).clickable { menuOpen = true }.padding(2.dp),
+                    )
+                    DropdownMenu(
+                        expanded = menuOpen,
+                        onDismissRequest = { menuOpen = false },
+                        shape = RoundedCornerShape(16.dp),
+                        containerColor = c.popoverSurface,
+                        border = BorderStroke(1.dp, c.popoverBorder),
+                    ) {
+                        onPlayNext?.let { act ->
+                            DropdownMenuItem(text = { Text(strings.playNext, color = c.textPrimary) }, onClick = { act(); menuOpen = false })
+                        }
+                        onAddToQueue?.let { act ->
+                            DropdownMenuItem(text = { Text(strings.addToQueue, color = c.textPrimary) }, onClick = { act(); menuOpen = false })
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

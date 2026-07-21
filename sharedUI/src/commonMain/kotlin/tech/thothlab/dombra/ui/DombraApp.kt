@@ -113,6 +113,7 @@ private fun MainShell(
             player = player,
             onBack = { nav.pop() },
             onOpenPlayer = { nav.push(Screen.Player) },
+            onOpenAlbum = { id, title -> nav.push(Screen.Tracks(title, TrackListRef.Album(id))) },
         )
 
         Screen.Search -> SearchScreen(
@@ -143,9 +144,18 @@ private fun MainShell(
                     graph,
                     onBack = { nav.pop() },
                     onOpenLyrics = if (settings.showLyricsButton) ({ nav.push(Screen.Lyrics) }) else null,
+                    onOpenQueue = { nav.push(Screen.Queue) },
                 )
             } else {
                 // Трек исчез (очередь очищена) — вернуться из плеера.
+                LaunchedEffect(Unit) { nav.pop() }
+            }
+        }
+
+        Screen.Queue -> {
+            if (player.currentTrack != null) {
+                QueueScreen(graph, onBack = { nav.pop() })
+            } else {
                 LaunchedEffect(Unit) { nav.pop() }
             }
         }

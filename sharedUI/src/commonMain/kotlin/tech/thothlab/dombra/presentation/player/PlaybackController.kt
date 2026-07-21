@@ -251,6 +251,15 @@ class PlaybackController(
         persistSnapshot()
     }
 
+    /** Перейти к элементу очереди по индексу (тап в экране «Очередь»). */
+    fun jumpTo(index: Int) {
+        val s = _state.value
+        if (index !in s.queue.indices || index == s.currentIndex) return
+        _state.value = s.copy(currentIndex = index)
+        startCurrent(autoPlay = true)
+        persistSnapshot()
+    }
+
     /** Полностью убрать «сейчас играет»: стоп + очистка очереди (currentTrack → null). */
     fun clear() {
         prepareJob?.cancel()

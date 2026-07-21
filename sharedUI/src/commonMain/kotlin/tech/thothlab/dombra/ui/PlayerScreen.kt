@@ -68,6 +68,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -100,7 +101,7 @@ import tech.thothlab.dombra.theme.LocalThemeIsDark
  * кнопки «в избранное»/«в плейлист», тонкий accent seek-бар, матовые контролы.
  */
 @Composable
-fun PlayerScreen(graph: AppGraph, onBack: () -> Unit, onOpenLyrics: (() -> Unit)? = null) {
+fun PlayerScreen(graph: AppGraph, onBack: () -> Unit, onOpenLyrics: (() -> Unit)? = null, onOpenQueue: (() -> Unit)? = null) {
     val state: PlayerState by graph.playback.state.collectAsState()
     val track = state.currentTrack
     val accent = LocalAccentColor.current
@@ -136,7 +137,7 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit, onOpenLyrics: (() -> Unit)
             modifier = Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(horizontal = 24.dp, vertical = 12.dp),
+                .padding(horizontal = 18.dp, vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // Верхняя панель: свернуть (стекло-круг) · eyebrow · «ещё» (стекло-круг) — по макету.
@@ -273,8 +274,8 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit, onOpenLyrics: (() -> Unit)
                 },
             )
             Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(formatTime(state.positionMs), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(formatTime(state.durationMs ?: 0L), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(formatTime(state.positionMs), fontSize = 11.sp, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(formatTime(state.durationMs ?: 0L), fontSize = 11.sp, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
             Spacer(Modifier.height(20.dp))
@@ -293,16 +294,26 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit, onOpenLyrics: (() -> Unit)
                 Text("⚠ ${err.message}", color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
             }
 
-            // «Текст» — вход в караоке-экран (гейтится настройкой showLyricsButton).
-            onOpenLyrics?.let { openLyrics ->
-                Spacer(Modifier.height(14.dp))
-                Row(
-                    modifier = Modifier.clickable(onClick = openLyrics).padding(horizontal = 14.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Symbol(Sym.Lyrics, size = 18.dp, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(strings.lyrics, fontSize = 12.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            // Вторичный ряд действий (макет F4): очередь · текст. (airplay/cast — отдельная задача.)
+            Spacer(Modifier.height(14.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                val subtle = MaterialTheme.colorScheme.onSurfaceVariant
+                onOpenQueue?.let { openQueue ->
+                    Symbol(
+                        Sym.QueueMusic, size = 22.dp, tint = subtle,
+                        modifier = Modifier.clip(CircleShape).clickable(onClick = openQueue).padding(8.dp),
+                    )
+                }
+                // «Текст» — вход в караоке-экран (гейтится настройкой showLyricsButton).
+                onOpenLyrics?.let { openLyrics ->
+                    Symbol(
+                        Sym.Lyrics, size = 22.dp, tint = subtle,
+                        modifier = Modifier.clip(CircleShape).clickable(onClick = openLyrics).padding(8.dp),
+                    )
                 }
             }
 
@@ -336,7 +347,7 @@ private fun CarouselCard(
     ArtworkImage(
         artwork = graph.artwork,
         stableId = stableId,
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(22.dp),
         modifier = Modifier
             .width(cardWidth)
             .aspectRatio(1f)
@@ -346,7 +357,7 @@ private fun CarouselCard(
                 scaleY = scale
                 alpha = lerp(1f, 0.5f, t)
                 shadowElevation = 12.dp.toPx() * (1f - t)
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(22.dp)
             },
         iconScale = 0.22f,
     )

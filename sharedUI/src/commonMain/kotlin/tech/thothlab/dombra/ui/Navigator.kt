@@ -30,6 +30,9 @@ sealed interface Screen {
 
     /** Экран текста песни (синхронный караоке-скролл / простой текст). */
     data object Lyrics : Screen
+
+    /** Экран очереди воспроизведения («Сейчас играет» + «Далее»). */
+    data object Queue : Screen
 }
 
 /** Источник списка треков для [Screen.Tracks]. */

@@ -94,3 +94,6 @@ fun auroraColors(): AuroraColors =
 
 /** Градиент плитки-иконки: accent → фиолетовый (как в макете Aurora Glass). */
 fun iconTileBrush(accent: Color): Brush = Brush.linearGradient(listOf(accent, AuroraPurple))
+
+/** Двухцветный градиент плитки-иконки (макет: у каждого раздела свои два конца). */
+fun iconTileBrush(start: Color, end: Color): Brush = Brush.linearGradient(listOf(start, end))

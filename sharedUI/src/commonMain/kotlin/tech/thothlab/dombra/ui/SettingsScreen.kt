@@ -104,23 +104,33 @@ fun SettingsScreen(
 
             Text(strings.accentColor, style = MaterialTheme.typography.titleMedium)
             FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 AccentColor.entries.forEach { ac ->
                     val selected = settings.accentColor == ac
-                    Box(
-                        modifier = Modifier
-                            .size(46.dp)
-                            .clip(CircleShape)
-                            .background(ac.toColor())
-                            .border(
-                                width = if (selected) 3.dp else 0.dp,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                shape = CircleShape,
-                            )
-                            .clickable { scope.launch { graph.settings.update { it.copy(accentColor = ac) } } },
-                    )
+                    val swatch = @Composable {
+                        Box(
+                            modifier = Modifier
+                                .size(26.dp)
+                                .clip(CircleShape)
+                                .background(ac.toColor())
+                                .clickable { scope.launch { graph.settings.update { it.copy(accentColor = ac) } } },
+                        )
+                    }
+                    if (selected) {
+                        // Двойное кольцо по макету: зазор цвета фона + обводка onSurface.
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .border(2.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                                .padding(4.dp),
+                            contentAlignment = Alignment.Center,
+                        ) { swatch() }
+                    } else {
+                        swatch()
+                    }
                 }
             }
 
