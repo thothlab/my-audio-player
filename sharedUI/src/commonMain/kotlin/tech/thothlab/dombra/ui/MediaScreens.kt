@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -55,6 +56,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,7 +72,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import tech.thothlab.dombra.di.AppGraph
 import tech.thothlab.dombra.domain.model.Album
@@ -275,6 +279,18 @@ private fun MediaGroupCard(
 /** Кэш «альбом → stableId первого трека» — чтобы список альбомов не перечитывал обложку при скролле. */
 private val albumCoverIdCache = HashMap<String, String?>()
 
+/**
+ * Кэш последних загруженных списков Медиатеки: при повторном заходе на экран данные показываются
+ * сразу (как `initial` для `collectAsState`), а не мигают скелетоном — фоновая эмиссия Flow обновит.
+ */
+internal object LibraryUiCache {
+    var albums: List<Album>? = null
+    var artists: List<Artist>? = null
+    var playlists: List<Playlist>? = null
+    var allTracks: List<Track>? = null
+    var likedTracks: List<Track>? = null
+}
+
 /** Карточка альбома: обложка из артворка первого трека, иначе стилизованная плитка-диск. */
 @Composable
 private fun AlbumGroupCard(graph: AppGraph, album: Album, onClick: () -> Unit) {
@@ -317,14 +333,19 @@ private fun AlbumsScreen(
     val sort = settings?.albumSort ?: AlbumSort.TITLE
     val desc = settings?.albumSortDesc ?: false
     val grid = settings?.albumGridView ?: false
-    val albumsData by graph.library.albums().collectAsState(initial = null)
-    val loading = albumsData == null
+    val albumsData by remember { graph.library.albums().onEach { LibraryUiCache.albums = it } }
+        .collectAsState(initial = LibraryUiCache.albums)
+    // Ждём настройки (сортировка/вид), иначе список стартует в дефолте и переупорядочивается — скролл прыгает.
+    val loading = albumsData == null || settings == null
     val albums = albumsData ?: emptyList()
-    val tracks by graph.library.tracks().collectAsState(initial = emptyList())
+    // Треки нужны только для сортировки «по дате добавления» — иначе не читаем.
+    val recentTracks by remember(sort) {
+        if (sort == AlbumSort.RECENT) graph.library.tracks() else flowOf(emptyList())
+    }.collectAsState(initial = emptyList())
 
-    val sorted = remember(albums, tracks, sort, desc) {
+    val sorted = remember(albums, recentTracks, sort, desc) {
         val recency: Map<String, Long> =
-            if (sort == AlbumSort.RECENT) tracks.groupBy { it.albumId }.mapValues { e -> e.value.maxOf { it.addedAt } }
+            if (sort == AlbumSort.RECENT) recentTracks.groupBy { it.albumId }.mapValues { e -> e.value.maxOf { it.addedAt } }
             else emptyMap()
         // Восходящая база + разворот по направлению; вторичный ключ — название (стабильность).
         val base: Comparator<Album> = when (sort) {
@@ -552,16 +573,19 @@ fun CollectionScreen(
     val strings = LocalStrings.current
     when (section) {
         HomeSectionId.ALL_SONGS -> {
-            val data by graph.library.tracks().collectAsState(initial = null)
+            val data by remember { graph.library.tracks().onEach { LibraryUiCache.allTracks = it } }
+                .collectAsState(initial = LibraryUiCache.allTracks)
             TrackListScreen(graph, strings.allSongs, "all", data ?: emptyList(), player, onBack, onOpenPlayer, loading = data == null)
         }
         HomeSectionId.LIKED_SONGS -> {
-            val data by graph.library.favoriteTracks().collectAsState(initial = null)
+            val data by remember { graph.library.favoriteTracks().onEach { LibraryUiCache.likedTracks = it } }
+                .collectAsState(initial = LibraryUiCache.likedTracks)
             TrackListScreen(graph, strings.likedSongs, "liked", data ?: emptyList(), player, onBack, onOpenPlayer, loading = data == null)
         }
         HomeSectionId.ARTISTS -> {
-            val artists by graph.library.artists().collectAsState(initial = null)
-            GroupListScreen(strings.artists, player, onBack, onOpenPlayer, graph, loading = artists == null) {
+            val artists by remember { graph.library.artists().onEach { LibraryUiCache.artists = it } }
+                .collectAsState(initial = LibraryUiCache.artists)
+            GroupListScreen(strings.artists, player, onBack, onOpenPlayer, graph, scrollKey = "artists", loading = artists == null) {
                 items(artists ?: emptyList(), key = { it.id }) { a: Artist ->
                     MediaGroupCard(
                         a.name, Sym.Group, ArtistTileColor,
@@ -579,11 +603,13 @@ fun CollectionScreen(
             onSearch = onSearch,
         )
         HomeSectionId.PLAYLISTS -> {
-            val playlists by graph.playlists.playlists().collectAsState(initial = null)
+            val playlists by remember { graph.playlists.playlists().onEach { LibraryUiCache.playlists = it } }
+                .collectAsState(initial = LibraryUiCache.playlists)
             val scope = rememberCoroutineScope()
             var showCreate by remember { mutableStateOf(false) }
             GroupListScreen(
                 strings.playlists, player, onBack, onOpenPlayer, graph,
+                scrollKey = "playlists",
                 loading = playlists == null,
                 showEmpty = playlists?.isEmpty() == true,
                 emptyContent = { PlaylistsEmptyState(onCreate = { showCreate = true }) },
@@ -670,6 +696,10 @@ private fun TrackListScreen(
     val scope = rememberCoroutineScope()
     val order = settings?.sortOrders?.get(collectionKey) ?: SortOrder.MANUAL
     val sorted = remember(tracks, order) { tracks.sortedByOrder(order) }
+    // Отдельный ключ прокрутки на коллекцию: иначе разные списки (общий TrackListScreen)
+    // делят одно состояние скролла — «Все песни» подхватывали позицию альбома. Заодно
+    // позиция скролла сохраняется при возврате на тот же список.
+    val listState = rememberSaveable(saver = LazyListState.Saver, key = "tracklist:$collectionKey") { LazyListState() }
 
     Box(Modifier.fillMaxSize()) {
         CosmosBackground(CosmosScreen.Secondary)
@@ -711,7 +741,10 @@ private fun TrackListScreen(
                     Spacer(Modifier.weight(1f))
                 }
             }
-            if (loading) TrackListSkeleton() else LazyColumn(
+            // Ждём загрузки настроек (порядок сортировки): иначе список рендерится в MANUAL, затем
+            // переупорядочивается при приходе настроек — LazyColumn «якорит» скролл к уехавшему элементу.
+            if (loading || settings == null) TrackListSkeleton() else LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
                 contentPadding = PaddingValues(bottom = if (player.currentTrack != null) 92.dp else 8.dp),
@@ -939,11 +972,14 @@ private fun GroupListScreen(
     onBack: () -> Unit,
     onOpenPlayer: () -> Unit,
     graph: AppGraph,
+    scrollKey: String,
     loading: Boolean = false,
     showEmpty: Boolean = false,
     emptyContent: (@Composable () -> Unit)? = null,
     content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit,
 ) {
+    // Отдельный ключ прокрутки на коллекцию (общий GroupListScreen для исполнителей/плейлистов).
+    val listState = rememberSaveable(saver = LazyListState.Saver, key = "grouplist:$scrollKey") { LazyListState() }
     Box(Modifier.fillMaxSize()) {
         CosmosBackground(CosmosScreen.Secondary)
         Column(
@@ -958,6 +994,7 @@ private fun GroupListScreen(
                 showEmpty && emptyContent != null ->
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { emptyContent() }
                 else -> LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     contentPadding = PaddingValues(top = 4.dp, bottom = if (player.currentTrack != null) 92.dp else 8.dp),
