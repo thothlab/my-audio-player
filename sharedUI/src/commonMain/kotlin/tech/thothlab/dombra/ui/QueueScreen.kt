@@ -68,6 +68,9 @@ fun QueueScreen(graph: AppGraph, onBack: () -> Unit) {
 
     val current = state.currentItem
     val baseIndex = state.currentIndex
+    val played = remember(state.queue, baseIndex) {
+        if (baseIndex > 0) state.queue.take(baseIndex.coerceAtMost(state.queue.size)) else emptyList()
+    }
     val upNext = remember(state.queue, baseIndex) {
         if (baseIndex in state.queue.indices) state.queue.drop(baseIndex + 1) else emptyList()
     }
@@ -114,6 +117,12 @@ fun QueueScreen(graph: AppGraph, onBack: () -> Unit) {
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(top = 6.dp, bottom = 24.dp),
             ) {
+                if (played.isNotEmpty()) {
+                    item(key = "played-label") { QueueLabel(strings.played, c.textTertiary) }
+                    itemsIndexed(played, key = { _, it -> "p_" + it.entryId }) { i, qi ->
+                        PlayedRow(graph, qi) { graph.playback.jumpTo(i) }
+                    }
+                }
                 if (current != null) {
                     item(key = "np-label") { QueueLabel(strings.nowPlaying, c.textTertiary) }
                     item(key = "np-card") {
@@ -216,6 +225,28 @@ private fun NowPlayingCard(
             filled = true, size = 26.dp, tint = c.textPrimary,
             modifier = Modifier.clip(CircleShape).clickable(onClick = onToggle).padding(4.dp),
         )
+    }
+}
+
+/** Строка «Проиграно»: приглушённая, тап — перейти к треку. */
+@Composable
+private fun PlayedRow(graph: AppGraph, item: QueueItem, onTap: () -> Unit) {
+    val c = auroraColors()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(UP_NEXT_ROW_HEIGHT)
+            .graphicsLayer { alpha = 0.5f }
+            .clickable(onClick = onTap)
+            .padding(vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        ArtworkImage(graph.artwork, item.track.stableId, shape = RoundedCornerShape(10.dp), modifier = Modifier.size(42.dp), iconScale = 0.5f)
+        Column(Modifier.weight(1f)) {
+            Text(item.track.title, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = c.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(item.track.artistName, fontSize = 12.sp, color = c.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
     }
 }
 

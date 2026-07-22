@@ -303,19 +303,11 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit, onOpenLyrics: (() -> Unit)
             ) {
                 val subtle = MaterialTheme.colorScheme.onSurfaceVariant
                 onOpenQueue?.let { openQueue ->
-                    Symbol(
-                        Sym.QueueMusic, size = 22.dp, tint = subtle,
-                        modifier = Modifier.clip(CircleShape).clickable(onClick = openQueue).padding(8.dp),
-                    )
+                    SecondaryAction(Sym.QueueMusic, strings.queue, subtle, openQueue)
                 }
                 // «Текст песни» — только если у трека есть встроенный текст (тег) и кнопка включена.
                 onOpenLyrics?.let { openLyrics ->
-                    if (track?.hasEmbeddedLyrics == true) {
-                        Symbol(
-                            Sym.Lyrics, size = 22.dp, tint = subtle,
-                            modifier = Modifier.clip(CircleShape).clickable(onClick = openLyrics).padding(8.dp),
-                        )
-                    }
+                    if (track?.hasEmbeddedLyrics == true) SecondaryAction(Sym.Lyrics, strings.lyrics, subtle, openLyrics)
                 }
             }
 
@@ -541,6 +533,19 @@ private fun GlassCircle(
         contentAlignment = Alignment.Center,
     ) {
         Symbol(glyph, filled = filled, size = glyphSize, tint = tint)
+    }
+}
+
+/** Кнопка вторичного ряда плеера: иконка + подпись (Очередь / Текст). */
+@Composable
+private fun SecondaryAction(icon: Char, label: String, tint: Color, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        Symbol(icon, size = 20.dp, tint = tint)
+        Text(label, fontSize = 12.5.sp, color = tint)
     }
 }
 
