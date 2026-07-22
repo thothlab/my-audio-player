@@ -13,6 +13,7 @@ import androidx.media3.common.Tracks
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import java.util.concurrent.Executor
+import kotlin.math.pow
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -70,6 +71,8 @@ class Media3AudioEngine(
     private var durationMs: Long? = null
 
     @Volatile private var volume: Float = 1f
+    // ReplayGain: dB-поправка как линейный множитель громкости (0 дБ = 1.0). Итог = volume * gainMul.
+    @Volatile private var gainMul: Float = 1f
 
     init {
         // Асинхронное подключение MediaController к PlaybackService (на main-потоке).
@@ -82,7 +85,7 @@ class Media3AudioEngine(
                     log.w { "MediaController не подключился" }
                     return@addListener
                 }
-                c.volume = volume
+                c.volume = effectiveVolume()
                 c.addListener(playerListener)
                 player = c
                 ready.complete(c)
@@ -203,12 +206,20 @@ class Media3AudioEngine(
 
     override fun setVolume(volume: Float) {
         this.volume = volume.coerceIn(0f, 1f)
-        onMain { player?.volume = this.volume }
+        applyVolume()
     }
 
-    override val supportsGainDb: Boolean = false
+    override val supportsGainDb: Boolean = true
 
-    override fun setGainDb(gainDb: Double) = Unit
+    /** ReplayGain: дБ → линейный множитель (10^(dB/20)); применяется поверх пользовательской громкости. */
+    override fun setGainDb(gainDb: Double) {
+        gainMul = 10.0.pow(gainDb / 20.0).toFloat()
+        applyVolume()
+    }
+
+    private fun effectiveVolume(): Float = (volume * gainMul).coerceIn(0f, 1f)
+
+    private fun applyVolume() = onMain { player?.volume = effectiveVolume() }
 
     override fun release() = onMain {
         stopPositionUpdates()

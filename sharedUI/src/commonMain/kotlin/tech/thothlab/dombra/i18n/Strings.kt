@@ -124,6 +124,9 @@ class Strings(lang: AppLanguage) {
     }
     val replayGain = t("Нормализация громкости", "ReplayGain")
     val sleepTimer = t("Таймер сна", "Sleep timer")
+    val sleepOff = t("Выкл", "Off")
+    val sleepEndOfTrack = t("До конца трека", "End of track")
+    fun sleepMinutes(n: Int) = if (en) "$n min" else "$n мин"
     val equalizer = t("Эквалайзер", "Equalizer")
     val sources = t("Источники", "Sources")
 

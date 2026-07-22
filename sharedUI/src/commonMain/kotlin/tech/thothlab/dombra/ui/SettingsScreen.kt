@@ -75,7 +75,10 @@ fun SettingsScreen(
     val remoteConfig by graph.remote.config.collectAsState()
     val c = auroraColors()
     val strings = LocalStrings.current
+    val accent = LocalAccentColor.current
+    val sleepMs by graph.playback.sleepTimerMs.collectAsState()
     var showLangPicker by remember { mutableStateOf(false) }
+    var showSleepDialog by remember { mutableStateOf(false) }
     fun update(block: (AppSettings) -> AppSettings) { scope.launch { graph.settings.update(block) } }
 
     Box(Modifier.fillMaxSize()) {
@@ -152,8 +155,18 @@ fun SettingsScreen(
                     onRowClick = onOpenEqualizer,
                 ) { on -> update { it.copy(equalizerEnabled = on) } }
                 HorizontalDivider(color = c.glassBorder)
-                SoundRow(strings.sleepTimer, checked = settings.showSleepTimerButton) { on ->
-                    update { it.copy(showSleepTimerButton = on) }
+                // Таймер сна: строка со значением (остаток / «Выкл») → диалог выбора.
+                Row(
+                    modifier = Modifier.fillMaxWidth().clickable { showSleepDialog = true }.padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(strings.sleepTimer, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                    Text(
+                        sleepMs?.let { formatTime(it) } ?: strings.sleepOff,
+                        color = if (sleepMs != null) accent else c.textSecondary,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Symbol(Sym.ChevronRight, size = 19.dp, tint = c.textSecondary, modifier = Modifier.padding(start = 4.dp))
                 }
             }
 
@@ -205,6 +218,50 @@ fun SettingsScreen(
             onDismiss = { showLangPicker = false },
         )
     }
+    if (showSleepDialog) {
+        SleepTimerDialog(
+            active = sleepMs != null,
+            onDismiss = { showSleepDialog = false },
+            onMinutes = { graph.playback.startSleepTimer(it * 60_000L) },
+            onEndOfTrack = { graph.playback.startSleepTimerEndOfTrack() },
+            onOff = { graph.playback.cancelSleepTimer() },
+        )
+    }
+}
+
+/** Диалог таймера сна: 15/30/45/60 мин · до конца трека · выкл. */
+@Composable
+private fun SleepTimerDialog(
+    active: Boolean,
+    onDismiss: () -> Unit,
+    onMinutes: (Int) -> Unit,
+    onEndOfTrack: () -> Unit,
+    onOff: () -> Unit,
+) {
+    val c = auroraColors()
+    val accent = LocalAccentColor.current
+    val strings = LocalStrings.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = c.popoverSurface,
+        title = { Text(strings.sleepTimer, color = c.textPrimary) },
+        text = {
+            Column {
+                listOf(15, 30, 45, 60).forEach { m ->
+                    SleepOption(strings.sleepMinutes(m), c.textPrimary) { onMinutes(m); onDismiss() }
+                }
+                SleepOption(strings.sleepEndOfTrack, c.textPrimary) { onEndOfTrack(); onDismiss() }
+                SleepOption(strings.sleepOff, if (active) accent else c.textSecondary) { onOff(); onDismiss() }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text(strings.close) } },
+    )
+}
+
+@Composable
+private fun SleepOption(label: String, color: Color, onClick: () -> Unit) {
+    Text(label, color = color, modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp))
 }
 
 /** Строка секции «Звук»: подпись + переключатель; опц. тап по строке (для эквалайзера). */

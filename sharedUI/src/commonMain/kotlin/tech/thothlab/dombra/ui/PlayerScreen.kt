@@ -101,7 +101,13 @@ import tech.thothlab.dombra.theme.LocalThemeIsDark
  * кнопки «в избранное»/«в плейлист», тонкий accent seek-бар, матовые контролы.
  */
 @Composable
-fun PlayerScreen(graph: AppGraph, onBack: () -> Unit, onOpenLyrics: (() -> Unit)? = null, onOpenQueue: (() -> Unit)? = null) {
+fun PlayerScreen(
+    graph: AppGraph,
+    onBack: () -> Unit,
+    onOpenLyrics: (() -> Unit)? = null,
+    onOpenQueue: (() -> Unit)? = null,
+    onOpenEqualizer: (() -> Unit)? = null,
+) {
     val state: PlayerState by graph.playback.state.collectAsState()
     val track = state.currentTrack
     val accent = LocalAccentColor.current
@@ -153,25 +159,31 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit, onOpenLyrics: (() -> Unit)
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
                 )
-                Box {
-                    GlassCircle(Sym.MoreVert, glyphSize = 20.dp, onClick = { showMenu = true })
-                    val c = auroraColors()
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false },
-                        shape = RoundedCornerShape(16.dp),
-                        containerColor = c.popoverSurface,
-                        border = BorderStroke(1.dp, c.popoverBorder),
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(strings.addToPlaylist, color = c.textPrimary) },
-                            onClick = { showMenu = false; showPlaylistSheet = true },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(strings.stop, color = c.textPrimary) },
-                            onClick = { showMenu = false; graph.playback.clear(); onBack() },
-                        )
+                // Меню «ещё» скрыто (дублировало ♥/+ на экране и стоп-свайп мини-плеера).
+                // Код оставлен под флагом — при необходимости вернуть, поставить SHOW_PLAYER_MORE_MENU = true.
+                if (SHOW_PLAYER_MORE_MENU) {
+                    Box {
+                        GlassCircle(Sym.MoreVert, glyphSize = 20.dp, onClick = { showMenu = true })
+                        val c = auroraColors()
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false },
+                            shape = RoundedCornerShape(16.dp),
+                            containerColor = c.popoverSurface,
+                            border = BorderStroke(1.dp, c.popoverBorder),
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(strings.addToPlaylist, color = c.textPrimary) },
+                                onClick = { showMenu = false; showPlaylistSheet = true },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(strings.stop, color = c.textPrimary) },
+                                onClick = { showMenu = false; graph.playback.clear(); onBack() },
+                            )
+                        }
                     }
+                } else {
+                    Spacer(Modifier.size(40.dp)) // держим eyebrow по центру (баланс с кнопкой «свернуть»)
                 }
             }
 
@@ -304,6 +316,9 @@ fun PlayerScreen(graph: AppGraph, onBack: () -> Unit, onOpenLyrics: (() -> Unit)
                 val subtle = MaterialTheme.colorScheme.onSurfaceVariant
                 onOpenQueue?.let { openQueue ->
                     SecondaryAction(Sym.QueueMusic, strings.queue, subtle, openQueue)
+                }
+                onOpenEqualizer?.let { openEq ->
+                    SecondaryAction(Sym.GraphicEq, strings.equalizer, subtle, openEq)
                 }
                 // «Текст песни» — только если у трека есть встроенный текст (тег) и кнопка включена.
                 onOpenLyrics?.let { openLyrics ->
@@ -657,6 +672,9 @@ private fun SeekBar(
 }
 
 private const val SWIPE_THRESHOLD = 120f
+
+/** Меню «три точки» на плеере скрыто (см. верхнюю панель); код меню оставлен под этим флагом. */
+private const val SHOW_PLAYER_MORE_MENU = false
 
 internal fun formatTime(ms: Long): String {
     val totalSec = (ms / 1000).coerceAtLeast(0)

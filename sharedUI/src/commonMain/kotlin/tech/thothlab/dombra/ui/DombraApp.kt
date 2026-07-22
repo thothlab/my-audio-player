@@ -146,6 +146,7 @@ private fun MainShell(
                     onBack = { nav.pop() },
                     onOpenLyrics = if (settings.showLyricsButton) ({ nav.push(Screen.Lyrics) }) else null,
                     onOpenQueue = { nav.push(Screen.Queue) },
+                    onOpenEqualizer = { nav.push(Screen.Equalizer) },
                 )
             } else {
                 // Трек исчез (очередь очищена) — вернуться из плеера.
