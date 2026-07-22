@@ -51,6 +51,7 @@ import tech.thothlab.dombra.theme.Symbol
 fun OnboardingScreen(
     onPickFolder: (() -> Unit)?,
     onFinish: () -> Unit,
+    pickedFolder: String? = null,
 ) {
     val accent = LocalAccentColor.current
     val strings = LocalStrings.current
@@ -129,6 +130,19 @@ fun OnboardingScreen(
                     Symbol(Sym.Folder, size = 18.dp)
                     Spacer(Modifier.width(8.dp))
                     Text(strings.pickFolder)
+                }
+                // Показать путь выбранной папки — чтобы было видно, что что-то выбрано.
+                pickedFolder?.let { folder ->
+                    Spacer(Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Symbol(Sym.Check, size = 16.dp, tint = accent)
+                        Text(
+                            strings.selectedFolder(folder),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
                 }
             }
 

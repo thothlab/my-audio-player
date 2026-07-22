@@ -29,6 +29,7 @@ fun DombraApp(
     graph: AppGraph,
     onPickFolder: (() -> Unit)? = null,
     onThemeChanged: @Composable (isDark: Boolean) -> Unit = {},
+    pickedFolder: String? = null,
 ) {
     // initial = null → пока реальные настройки не загрузились, держим сплеш и не мигаем онбордингом.
     val appSettings by graph.settings.settings.collectAsState(initial = null)
@@ -49,6 +50,7 @@ fun DombraApp(
             !settings.onboardingDone -> OnboardingScreen(
                 onPickFolder = onPickFolder,
                 onFinish = { scope.launch { graph.settings.update { it.copy(onboardingDone = true) } } },
+                pickedFolder = pickedFolder,
             )
 
             else -> MainShell(graph, onPickFolder, settings)

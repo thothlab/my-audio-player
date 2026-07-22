@@ -165,6 +165,7 @@ class Strings(lang: AppLanguage) {
         "Pick a music folder on your device. You can connect your own server later in settings.",
     )
     val pickFolder = t("Выбрать папку", "Pick folder")
+    fun selectedFolder(path: String) = if (en) "Selected: $path" else "Выбрано: $path"
     val skip = t("Пропустить", "Skip")
     val continueBtn = t("Продолжить", "Continue")
     val start = t("Начать", "Start")
