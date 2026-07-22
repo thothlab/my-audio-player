@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- «Слива» — фон сплеша (совпадает с Compose SplashScreen), чтобы старт был бесшовным. -->
+    <color name="splash_plum">#2A0B2B</color>
+</resources>
