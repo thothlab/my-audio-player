@@ -84,6 +84,7 @@ class Strings(lang: AppLanguage) {
 
     // Очередь
     val queue = t("Очередь", "Queue")
+    val played = t("Проиграно", "Played")
     val clearQueue = t("Очистить", "Clear")
     val upNext = t("Далее", "Up next")
     val listen = t("Слушать", "Play")
@@ -121,7 +122,8 @@ class Strings(lang: AppLanguage) {
         ThemeMode.LIGHT -> lightTheme
         ThemeMode.DARK -> darkTheme
     }
-    val sleepTimer = t("Sleep-таймер", "Sleep timer")
+    val replayGain = t("Нормализация громкости", "ReplayGain")
+    val sleepTimer = t("Таймер сна", "Sleep timer")
     val equalizer = t("Эквалайзер", "Equalizer")
     val sources = t("Источники", "Sources")
 

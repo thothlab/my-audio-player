@@ -142,7 +142,7 @@ fun SettingsScreen(
                     .background(c.glassFill)
                     .border(1.dp, c.glassBorder, RoundedCornerShape(16.dp)),
             ) {
-                SoundRow("ReplayGain", checked = settings.replayGainMode != ReplayGainMode.OFF) { on ->
+                SoundRow(strings.replayGain, checked = settings.replayGainMode != ReplayGainMode.OFF) { on ->
                     update { it.copy(replayGainMode = if (on) ReplayGainMode.TRACK else ReplayGainMode.OFF) }
                 }
                 HorizontalDivider(color = c.glassBorder)
