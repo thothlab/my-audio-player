@@ -30,6 +30,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 import tech.thothlab.dombra.i18n.LocalStrings
+import tech.thothlab.dombra.presentation.player.AudioEffectsHolder
 import tech.thothlab.dombra.theme.AuroraPurple
 import tech.thothlab.dombra.theme.LocalAccentColor
 import tech.thothlab.dombra.theme.auroraColors
@@ -85,6 +87,16 @@ fun EqualizerScreen(
     val bands: SnapshotStateList<Float> = remember { List(10) { 0.5f }.toMutableStateList() }
     var preamp by remember { mutableStateOf(0.62f) }
     var preset by remember { mutableStateOf("Свой") }
+
+    // Центральные частоты полос (Гц) — для маппинга на реальный audiofx-эквалайзер.
+    val freqsHz = remember { intArrayOf(32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000) }
+    // Значение полосы 0..1 → дБ (0.5 = 0 дБ, диапазон ±12 дБ). Применяем к звуку.
+    fun applyEq() = AudioEffectsHolder.setBands(freqsHz, FloatArray(bands.size) { (bands[it] - 0.5f) * 24f })
+    // При входе/смене вкл — синхронизировать звук с текущим UI.
+    LaunchedEffect(enabled) {
+        AudioEffectsHolder.setEnabled(enabled)
+        applyEq()
+    }
 
     Box(Modifier.fillMaxSize()) {
         CosmosBackground(CosmosScreen.Secondary)
@@ -127,6 +139,7 @@ fun EqualizerScreen(
                             .clickable {
                                 preset = name
                                 PRESETS[name]?.let { p -> p.forEachIndexed { i, v -> bands[i] = v } }
+                                applyEq()
                             }
                             .padding(horizontal = 15.dp, vertical = 7.dp),
                     ) {
@@ -149,7 +162,7 @@ fun EqualizerScreen(
                         trackColor = c.glassBorderStrong,
                         labelColor = c.textTertiary,
                         modifier = Modifier.weight(1f),
-                        onValueChange = { bands[i] = it; preset = "Свой" },
+                        onValueChange = { bands[i] = it; preset = "Свой"; applyEq() },
                     )
                 }
             }

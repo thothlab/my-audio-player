@@ -3,6 +3,7 @@ package tech.thothlab.dombra.presentation.player
 import kotlin.random.Random
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -88,9 +89,22 @@ class PlaybackController(
     private var prepareJob: Job? = null
     private var appSettings = AppSettings()
 
+    // Таймер сна: остаток в мс (null = выключен); по истечении — пауза воспроизведения.
+    private var sleepJob: Job? = null
+    private val _sleepTimerMs = MutableStateFlow<Long?>(null)
+    val sleepTimerMs: StateFlow<Long?> = _sleepTimerMs
+
     init {
         scope.launch {
-            settings.settings.collect { appSettings = it }
+            settings.settings.collect { newSettings ->
+                // Смена режима/предусиления ReplayGain — применить к текущему треку сразу (не ждать следующий).
+                val rgChanged = newSettings.replayGainMode != appSettings.replayGainMode ||
+                    newSettings.replayGainPreampDb != appSettings.replayGainPreampDb
+                val eqChanged = newSettings.equalizerEnabled != appSettings.equalizerEnabled
+                appSettings = newSettings
+                if (rgChanged) _state.value.currentTrack?.let { applyReplayGain(it) }
+                if (eqChanged) AudioEffectsHolder.setEnabled(newSettings.equalizerEnabled)
+            }
         }
         scope.launch {
             engine.state.collect { engineState -> onEngineState(engineState) }
@@ -258,6 +272,43 @@ class PlaybackController(
         _state.value = s.copy(currentIndex = index)
         startCurrent(autoPlay = true)
         persistSnapshot()
+    }
+
+    // --- Таймер сна ---
+
+    /** Запустить таймер сна на длительность (мс). ≤0 — выключить. По истечении — пауза. */
+    fun startSleepTimer(durationMs: Long) {
+        sleepJob?.cancel()
+        if (durationMs <= 0L) {
+            _sleepTimerMs.value = null
+            sleepJob = null
+            return
+        }
+        val deadline = clock.nowMs() + durationMs
+        sleepJob = scope.launch {
+            while (true) {
+                val remaining = deadline - clock.nowMs()
+                if (remaining <= 0L) break
+                _sleepTimerMs.value = remaining
+                delay(1000)
+            }
+            engine.pause()
+            _sleepTimerMs.value = null
+            sleepJob = null
+        }
+    }
+
+    /** Таймер сна «до конца текущего трека» (по оставшейся длительности). */
+    fun startSleepTimerEndOfTrack() {
+        val s = _state.value
+        val dur = s.durationMs ?: return
+        startSleepTimer((dur - s.positionMs).coerceAtLeast(0L))
+    }
+
+    fun cancelSleepTimer() {
+        sleepJob?.cancel()
+        sleepJob = null
+        _sleepTimerMs.value = null
     }
 
     /** Полностью убрать «сейчас играет»: стоп + очистка очереди (currentTrack → null). */

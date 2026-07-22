@@ -7,11 +7,14 @@ import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.NextRenderersFactory
 import tech.thothlab.dombra.R
+import tech.thothlab.dombra.presentation.player.AudioEffectsHolder
+import tech.thothlab.dombra.presentation.player.NoOpAudioEffects
 
 /**
  * Хост воспроизведения (§5.14 фон/локскрин). Держит единственный ExoPlayer с
@@ -23,6 +26,7 @@ import tech.thothlab.dombra.R
 class PlaybackService : MediaSessionService() {
 
     private var mediaSession: MediaSession? = null
+    private var audioEffects: AndroidAudioEffects? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -38,6 +42,16 @@ class PlaybackService : MediaSessionService() {
             )
             .setHandleAudioBecomingNoisy(true) // пауза при выдёргивании наушников
             .build()
+        // Эквалайзер (audiofx) привязываем к audio-session, как только он появится (старт трека).
+        player.addAnalyticsListener(object : AnalyticsListener {
+            override fun onAudioSessionIdChanged(eventTime: AnalyticsListener.EventTime, audioSessionId: Int) {
+                if (audioSessionId == C.AUDIO_SESSION_ID_UNSET) return
+                audioEffects?.release()
+                val fx = AndroidAudioEffects(audioSessionId)
+                audioEffects = fx
+                AudioEffectsHolder.current = fx
+            }
+        })
         mediaSession = MediaSession.Builder(this, player).build()
         // Брендовый значок в статус-баре вместо дефолтного медиа-глифа media3.
         setMediaNotificationProvider(
@@ -58,6 +72,9 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        AudioEffectsHolder.current = NoOpAudioEffects
+        audioEffects?.release()
+        audioEffects = null
         mediaSession?.run {
             player.release()
             release()
