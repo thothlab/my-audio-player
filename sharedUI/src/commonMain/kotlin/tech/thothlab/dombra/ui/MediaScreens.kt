@@ -1067,6 +1067,7 @@ private fun CreatePlaylistDialog(onDismiss: () -> Unit, onConfirm: (String) -> U
                 onValueChange = { name = it },
                 singleLine = true,
                 placeholder = { Text(strings.name) },
+                shape = RoundedCornerShape(13.dp),
             )
         },
         confirmButton = { TextButton(onClick = { onConfirm(name.ifBlank { strings.newPlaylist }) }) { Text(strings.create) } },
@@ -1101,24 +1102,14 @@ internal fun TrackRow(
     val c = auroraColors()
     val strings = LocalStrings.current
     Row(
-        // Подсветка/рамка — на всю ширину строки (снаружи паддинга), а внутренний
-        // отступ ОДИНАКОВ для всех строк → иконки строго в одну вертикаль (как в макете).
+        // Текущий трек — просто accent-цвет названия + бары «звучания», без карточки-подложки
+        // (убрали по запросу: карточка занимала лишнюю высоту). Внутренний отступ одинаков для всех строк.
         modifier = Modifier
             .fillMaxWidth()
-            .then(
-                if (isCurrent) {
-                    Modifier
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(c.glassFillStrong)
-                        .border(1.dp, c.glassBorderStrong, RoundedCornerShape(14.dp))
-                } else {
-                    Modifier
-                },
-            )
             .clickable(onClick = onClick)
             // end = 14dp: правый край трейлинга (эквалайзер-бары / длительность / «ещё») выровнен
             // по правому краю глифа «сортировка» в тулбаре (20dp-глиф в 48dp IconButton → инсет 14).
-            .padding(start = 8.dp, end = 14.dp, top = 8.dp, bottom = 8.dp),
+            .padding(start = 8.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {

@@ -506,6 +506,7 @@ private fun AddToPlaylistSheet(graph: AppGraph, track: Track, onDismiss: () -> U
                         onValueChange = { name = it },
                         singleLine = true,
                         placeholder = { Text(strings.name) },
+                        shape = RoundedCornerShape(13.dp),
                     )
                 }
             },
