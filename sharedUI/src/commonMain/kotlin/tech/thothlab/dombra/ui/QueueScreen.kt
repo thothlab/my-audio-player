@@ -31,6 +31,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -263,6 +264,13 @@ private fun UpNextRow(
     onDragEnd: () -> Unit,
 ) {
     val c = auroraColors()
+    // pointerInput(entryId) переживает пересортировки (ключ стабилен), поэтому его gesture-блок
+    // захватывает колбэки первой композиции с УЖЕ УСТАРЕВШИМ индексом строки. rememberUpdatedState
+    // гарантирует, что жест всегда зовёт свежие колбэки (с текущим i/upNext/baseIndex) — иначе
+    // после реордера «захватывается» не та строка (баг «захватываю 3-й — двигается последний»).
+    val currentOnDragStart by rememberUpdatedState(onDragStart)
+    val currentOnDrag by rememberUpdatedState(onDrag)
+    val currentOnDragEnd by rememberUpdatedState(onDragEnd)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -287,10 +295,10 @@ private fun UpNextRow(
             Sym.DragIndicator, size = 22.dp, tint = c.textFaint,
             modifier = Modifier.pointerInput(item.entryId) {
                 detectDragGesturesAfterLongPress(
-                    onDragStart = { onDragStart() },
-                    onDragEnd = { onDragEnd() },
-                    onDragCancel = { onDragEnd() },
-                ) { change, delta -> change.consume(); onDrag(delta.y) }
+                    onDragStart = { currentOnDragStart() },
+                    onDragEnd = { currentOnDragEnd() },
+                    onDragCancel = { currentOnDragEnd() },
+                ) { change, delta -> change.consume(); currentOnDrag(delta.y) }
             },
         )
     }
